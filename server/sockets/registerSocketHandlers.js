@@ -458,6 +458,7 @@ module.exports = function registerSocketHandlers(io) {
       }
 
       const cursor = {
+        socketId: socket.id,
         userId: socket.data.userId,
         name: socket.data.userName,
         x: payload.x,
@@ -479,9 +480,7 @@ module.exports = function registerSocketHandlers(io) {
 
       session.cursors.delete(socket.id);
 
-      socket.to(roomId).emit("cursor-left", {
-        userId: socket.data.userId,
-      });
+      socket.to(roomId).emit("cursor-left", socket.id);
     });
 
     socket.on("disconnect", async () => {
@@ -502,9 +501,7 @@ module.exports = function registerSocketHandlers(io) {
         }
       }
 
-      socket.to(roomId).emit("cursor-left", {
-        userId: socket.data.userId,
-      });
+      socket.to(roomId).emit("cursor-left", socket.id);
 
       emitRoomUsers(io, roomId, session);
 

@@ -92,6 +92,35 @@ export default function CanvasBoard({
   const textAreaRef = useRef(null);
 
   const [cursorPos, setCursorPos] = useState({ x: -100, y: -100 });
+  const cursorIdleTimerRef = useRef(null);
+  const isCursorActiveRef = useRef(false);
+
+  function resetCursorIdleTimer() {
+    isCursorActiveRef.current = true;
+    if (cursorIdleTimerRef.current) {
+      clearTimeout(cursorIdleTimerRef.current);
+    }
+    cursorIdleTimerRef.current = setTimeout(() => {
+      isCursorActiveRef.current = false;
+      socket?.emit("cursor-leave");
+    }, 3000);
+  }
+
+  function handlePointerLeave() {
+    isCursorActiveRef.current = false;
+    socket?.emit("cursor-leave");
+    if (cursorIdleTimerRef.current) {
+      clearTimeout(cursorIdleTimerRef.current);
+    }
+  }
+
+  useEffect(() => {
+    return () => {
+      if (cursorIdleTimerRef.current) {
+        clearTimeout(cursorIdleTimerRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (editingText && textAreaRef.current) {
@@ -103,6 +132,7 @@ export default function CanvasBoard({
   }, [editingText]);
 
   const emitCursorMove = useThrottle((point) => {
+    if (!isCursorActiveRef.current) return;
     socket?.emit("cursor-move", point);
   }, 24);
 
@@ -113,6 +143,8 @@ export default function CanvasBoard({
       point,
     });
   }, 16);
+
+  const scheduleRenderRef = useRef(null);
 
   function scheduleRender() {
     if (renderFrameRef.current) {
@@ -161,6 +193,8 @@ export default function CanvasBoard({
       context.restore();
     });
   }
+
+  scheduleRenderRef.current = scheduleRender;
 
   useEffect(() => {
     for (const item of items) {
@@ -231,7 +265,7 @@ export default function CanvasBoard({
           userId: payload.userId,
           points: [payload.point],
         });
-        scheduleRender();
+        scheduleRenderRef.current?.();
         return;
       }
 
@@ -243,20 +277,20 @@ export default function CanvasBoard({
         }
 
         stroke.points = [...stroke.points, payload.point];
-        scheduleRender();
+        scheduleRenderRef.current?.();
       }
     }
 
     function handleDrawCancel(payload) {
       remoteStrokesRef.current.delete(payload.strokeId);
-      scheduleRender();
+      scheduleRenderRef.current?.();
     }
 
     function handleClearCanvas() {
       remoteStrokesRef.current.clear();
       draftItemRef.current = null;
       previewMoveRef.current = null;
-      scheduleRender();
+      scheduleRenderRef.current?.();
     }
 
     socket.on("draw", handleRemoteDraw);
@@ -513,6 +547,7 @@ export default function CanvasBoard({
     }
 
     emitCursorMove(worldPoint);
+    resetCursorIdleTimer();
 
     if (!interactionRef.current) {
       return;
@@ -666,9 +701,7 @@ export default function CanvasBoard({
     scheduleRender();
   }
 
-  function handlePointerLeave() {
-    socket?.emit("cursor-leave");
-  }
+
 
   function handleWheel(event) {
     event.preventDefault();
@@ -710,7 +743,6 @@ export default function CanvasBoard({
         cursors={cursors}
         viewport={viewport}
         boardSize={boardSize}
-        currentUserId={user?.id}
       />
       {editingText && (
         <textarea

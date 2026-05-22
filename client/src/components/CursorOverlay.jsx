@@ -13,17 +13,11 @@ function getCursorColor(userId) {
   return CURSOR_COLORS[Math.abs(hash) % CURSOR_COLORS.length];
 }
 
-export default function CursorOverlay({ cursors, viewport, boardSize, currentUserId }) {
+export default function CursorOverlay({ cursors, viewport, boardSize }) {
   return (
     <div className="cursor-layer" style={{ zIndex: 100 }} aria-hidden="true">
-      {cursors
-        .filter((cursor) => {
-          const isRemote = cursor.userId !== currentUserId;
-          // if (!isRemote) console.log("🔍 Filtering out local cursor:", cursor.userId);
-          return isRemote;
-        })
-        .map((cursor) => {
-          console.log("👥 Rendering remote cursor:", cursor.userId, "at world", cursor.x, cursor.y);
+      {cursors.map((cursor) => {
+        console.log("👥 Rendering remote cursor:", cursor.socketId, "at world", cursor.x, cursor.y);
           const screen = worldToScreen(cursor, viewport);
           const isVisible =
             screen.x >= -40 &&
@@ -41,7 +35,7 @@ export default function CursorOverlay({ cursors, viewport, boardSize, currentUse
 
           return (
             <div
-              key={cursor.userId}
+              key={cursor.socketId}
               className="cursor-badge"
               style={{
                 transform: `translate(${screen.x}px, ${screen.y}px)`,

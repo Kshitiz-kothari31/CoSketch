@@ -78,12 +78,12 @@ function whiteboardReducer(state, action) {
     case "UPSERT_CURSOR":
       return {
         ...state,
-        cursors: upsertById(state.cursors, action.payload, "userId"),
+        cursors: upsertById(state.cursors, action.payload, "socketId"),
       };
     case "REMOVE_CURSOR":
       return {
         ...state,
-        cursors: state.cursors.filter((cursor) => cursor.userId !== action.payload),
+        cursors: state.cursors.filter((cursor) => cursor.socketId !== action.payload),
       };
     case "SET_TOOL":
       return {

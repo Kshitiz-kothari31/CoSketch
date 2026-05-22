@@ -188,7 +188,7 @@ export default function RoomPage() {
       console.log("📍 Received cursor move:", p);
       dispatch({ type: "UPSERT_CURSOR", payload: p });
     };
-    const handleCursorLeft = (p) => dispatch({ type: "REMOVE_CURSOR", payload: p.userId });
+    const handleCursorLeft = (socketId) => dispatch({ type: "REMOVE_CURSOR", payload: socketId });
     const handleRoomSaved = (p) => dispatch({ type: "HYDRATE_ROOM", payload: { savedAt: p.savedAt } });
 
     socket.on("room-state", handleRoomState);
@@ -320,10 +320,11 @@ export default function RoomPage() {
       <section className="floating-topbar floating-topbar--center">
         <span className="floating-badge floating-badge--save">
           <BoardIcon name="target" />
-          {formatLastSaved(state.savedAt)}
+          <span className="badge-text">{formatLastSaved(state.savedAt)}</span>
         </span>
-        <button type="button" className="cta-button" onClick={handleShare}>
-          {shareMessage || "Share Room ID"}
+        <button type="button" className={`cta-button ${shareMessage ? "is-copied" : ""}`} onClick={handleShare}>
+          <BoardIcon name="share" />
+          <span className="btn-text">{shareMessage || "Share Room ID"}</span>
         </button>
       </section>
 
@@ -443,8 +444,13 @@ export default function RoomPage() {
       )}
 
       <section className="board-status">
-        <span className={isConnected ? "status-pill is-live" : "status-pill"}>{statusMessage}</span>
-        <Link className="leave-link" to="/">Leave room</Link>
+        <span className={isConnected ? "status-pill is-live" : "status-pill"}>
+          <span className="status-text">{statusMessage}</span>
+        </span>
+        <Link className="leave-link" to="/">
+          <BoardIcon name="logout" />
+          <span className="btn-text">Leave room</span>
+        </Link>
       </section>
 
       {showHelp && (
