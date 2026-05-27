@@ -286,14 +286,25 @@ export default function RoomPage() {
 
   if (!isReady) {
     return (
-      <main className="landing-page" style={{ background: '#f7f5ef' }}>
+      <main className="landing-page" style={{
+        background: '#f7f5ef',
+        position: 'fixed',
+        inset: 0,
+        width: '100vw',
+        height: '100dvh',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 9999,
+        padding: 0,
+        margin: 0
+      }}>
         <div style={{ 
           display: 'flex', 
           flexDirection: 'column', 
           alignItems: 'center', 
-          justifyContent: 'center', 
-          height: '100vh',
-          width: '100vw'
+          justifyContent: 'center'
         }}>
           <div style={{
             position: 'relative',
