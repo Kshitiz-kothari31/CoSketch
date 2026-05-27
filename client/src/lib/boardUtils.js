@@ -318,11 +318,19 @@ export function drawBoardItem(context, item) {
   context.save();
 
   if (item.kind === "stroke") {
-    context.globalAlpha = typeof item.opacity === "number" ? item.opacity : 1;
+    if (item.tool === "eraser") {
+      context.globalCompositeOperation = "destination-out";
+      context.strokeStyle = "rgba(0,0,0,1)";
+      context.fillStyle = "rgba(0,0,0,1)";
+      context.globalAlpha = 1;
+    } else {
+      context.globalCompositeOperation = "source-over";
+      context.strokeStyle = item.color;
+      context.fillStyle = item.color;
+      context.globalAlpha = typeof item.opacity === "number" ? item.opacity : 1;
+    }
     context.lineCap = "round";
     context.lineJoin = "round";
-    context.strokeStyle = item.color;
-    context.fillStyle = item.color;
     context.lineWidth = item.size || 4;
 
     if (item.points.length === 1) {

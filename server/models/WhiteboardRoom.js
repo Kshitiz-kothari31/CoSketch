@@ -15,11 +15,19 @@ const WhiteboardRoomSchema = new mongoose.Schema(
       default: [],
     },
     historyStack: {
-      type: [mongoose.Schema.Types.Mixed],
-      default: [],
+      type: mongoose.Schema.Types.Mixed,
+      default: {},
     },
     redoStack: {
-      type: [mongoose.Schema.Types.Mixed],
+      type: mongoose.Schema.Types.Mixed,
+      default: {},
+    },
+    hostUserId: {
+      type: String,
+      default: null,
+    },
+    bannedUsers: {
+      type: [String],
       default: [],
     },
   },

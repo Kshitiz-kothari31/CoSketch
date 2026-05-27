@@ -1,5 +1,5 @@
 #include <iostream>
-#include <list>
+#include <set>
 #include <string>
 #include <vector>
 #include <algorithm>
@@ -14,19 +14,17 @@ using namespace emscripten;
 
 class WhiteboardManager {
     private:
-        std::list<CrdtItem> elements;
+        std::set<CrdtItem> elements;
 
     public:
         WhiteboardManager() {}
 
         void addElement(std::string id, std::vector<int> pos, std::string uid, std::string data) {
             // Upsert: Remove existing element with same ID if present
-            auto it = elements.begin();
-            while (it != elements.end()) {
+            for (auto it = elements.begin(); it != elements.end(); ++it) {
                 if (it->id == id) {
-                    it = elements.erase(it);
-                } else {
-                    ++it;
+                    elements.erase(it);
+                    break;
                 }
             }
 
@@ -37,18 +35,14 @@ class WhiteboardManager {
             newItem.shapeData = data;
             newItem.timestamp = 0;
 
-            auto insertIt = std::lower_bound(elements.begin(), elements.end(), newItem);
-            elements.insert(insertIt, newItem);
+            elements.insert(newItem);
         }
 
         void deleteElement(std::string id) {
-            auto it = elements.begin();
-            while (it != elements.end()) {
+            for (auto it = elements.begin(); it != elements.end(); ++it) {
                 if (it->id == id) {
-                    it = elements.erase(it);
+                    elements.erase(it);
                     break; 
-                } else {
-                    ++it;
                 }
             }
         }

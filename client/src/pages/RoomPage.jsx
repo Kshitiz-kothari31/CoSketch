@@ -1,6 +1,6 @@
-import { WhiteboardManager, VectorInt } from "../lib/CrdtManager";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useParams } from "react-router-dom";
+import { useWasmEngine } from "../hooks/useWasmEngine";
 
 import BoardIcon from "../components/BoardIcon";
 import CanvasBoard from "../components/CanvasBoard";
@@ -77,16 +77,11 @@ export default function RoomPage() {
   const [statusMessage, setStatusMessage] = useState("Connecting...");
   const [shareMessage, setShareMessage] = useState("");
   const [showHelp, setShowHelp] = useState(false);
-  const [wasmEngine, setWasmEngine] = useState(null);
   const [showDrawer, setShowDrawer] = useState(false);
+  const [showUsers, setShowUsers] = useState(false);
 
   // 1. Initialize Wasm Engine
-  useEffect(() => {
-    const instance = new WhiteboardManager();
-    const Module = { VectorInt };
-    setWasmEngine({ instance, Module });
-    console.log("🚀 CRDT JS Engine Active");
-  }, []);
+  const { engine: wasmEngine, isReady } = useWasmEngine();
 
   const user = useMemo(() => {
     const nextUser = location.state?.user || getFallbackUser();
@@ -114,14 +109,14 @@ export default function RoomPage() {
         const item = action.item;
         const v = new Module.VectorInt();
         (item.fractionalPosition || [50]).forEach(val => v.push_back(val));
-        instance.addElement(item.id, v, item.userId, item);
+        instance.addElement(item.id, v, item.userId, JSON.stringify(item));
         v.delete();
       } else if (action.type === "update-item") {
         // Revert to previous
         const item = action.previousItem;
         const v = new Module.VectorInt();
         (item.fractionalPosition || [50]).forEach(val => v.push_back(val));
-        instance.addElement(item.id, v, item.userId, item);
+        instance.addElement(item.id, v, item.userId, JSON.stringify(item));
         v.delete();
       }
     } else {
@@ -132,7 +127,7 @@ export default function RoomPage() {
         const position = item.fractionalPosition || [50];
         position.forEach(val => vectorPos.push_back(val));
         
-        instance.addElement(item.id, vectorPos, item.userId, item);
+        instance.addElement(item.id, vectorPos, item.userId, JSON.stringify(item));
         vectorPos.delete();
       } else if (action.type === "delete-item") {
         instance.deleteElement(item.id);
@@ -141,7 +136,7 @@ export default function RoomPage() {
       }
     }
 
-    const orderedItems = instance.getOrderedElements();
+    const orderedItems = JSON.parse(instance.getOrderedElements());
 
     dispatch({
       type: "HYDRATE_ROOM",
@@ -170,7 +165,7 @@ export default function RoomPage() {
         payload.items.forEach(item => {
           const v = new Module.VectorInt();
           (item.fractionalPosition || [50]).forEach(val => v.push_back(val));
-          instance.addElement(item.id, v, item.userId, item);
+          instance.addElement(item.id, v, item.userId, JSON.stringify(item));
           v.delete();
         });
       }
@@ -180,6 +175,7 @@ export default function RoomPage() {
 
     const handleRoomUsers = (p) => {
       dispatch({ type: "SET_PARTICIPANTS", payload: p.participants || [] });
+      dispatch({ type: "HYDRATE_ROOM", payload: { hostUserId: p.hostUserId, bannedUsers: p.bannedUsers } });
     };
 
     const handleUndo = (p) => handleBoardAction(p, true);
@@ -239,6 +235,7 @@ export default function RoomPage() {
       }
     };
 
+    socket.emit("draw", { phase: "done", strokeId: payload.item.id });
     socket.emit("board-action", payload);
     handleBoardAction(payload); // Immediate local update
 
@@ -287,6 +284,75 @@ export default function RoomPage() {
     setTimeout(() => setShareMessage(""), 1800);
   };
 
+  if (!isReady) {
+    return (
+      <main className="landing-page" style={{ background: '#f7f5ef' }}>
+        <div style={{ 
+          display: 'flex', 
+          flexDirection: 'column', 
+          alignItems: 'center', 
+          justifyContent: 'center', 
+          height: '100vh',
+          width: '100vw'
+        }}>
+          <div style={{
+            position: 'relative',
+            width: '80px',
+            height: '80px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}>
+            <div style={{
+              position: 'absolute',
+              width: '100%',
+              height: '100%',
+              borderRadius: '50%',
+              background: 'linear-gradient(135deg, #4B67FF, #9168FF)',
+              opacity: 0.2,
+              animation: 'pulse-ring 2s cubic-bezier(0.4, 0, 0.6, 1) infinite'
+            }} />
+            <div style={{
+              position: 'absolute',
+              width: '40px',
+              height: '40px',
+              borderRadius: '50%',
+              background: 'linear-gradient(135deg, #4B67FF, #9168FF)',
+              boxShadow: '0 8px 24px rgba(75, 103, 255, 0.4)',
+              animation: 'pulse-dot 2s cubic-bezier(0.4, 0, 0.6, 1) infinite'
+            }} />
+          </div>
+          <h2 style={{
+            marginTop: '2rem',
+            fontFamily: '"Avenir Next", "Segoe UI", sans-serif',
+            fontSize: '1.25rem',
+            fontWeight: 600,
+            color: '#2B2F3A',
+            letterSpacing: '-0.02em',
+            animation: 'fade-in-up 0.5s ease-out forwards',
+            opacity: 0
+          }}>
+            Preparing Workspace
+          </h2>
+          <style>{`
+            @keyframes pulse-ring {
+              0% { transform: scale(0.8); opacity: 0.5; }
+              100% { transform: scale(2); opacity: 0; }
+            }
+            @keyframes pulse-dot {
+              0%, 100% { transform: scale(1); }
+              50% { transform: scale(0.9); }
+            }
+            @keyframes fade-in-up {
+              from { opacity: 0; transform: translateY(10px); }
+              to { opacity: 1; transform: translateY(0); }
+            }
+          `}</style>
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main className="room-page">
       <CanvasBoard
@@ -310,7 +376,7 @@ export default function RoomPage() {
       <header className="floating-topbar floating-topbar--left">
         <div>
           <h1>Web whiteboard</h1>
-          <p>C++ CRDT Enabled</p>
+          <p>Real-time Sync</p>
         </div>
         <button type="button" className="icon-action" onClick={() => boardApiRef.current?.exportAsImage()} aria-label="Export board">
           <BoardIcon name="share" />
@@ -378,7 +444,7 @@ export default function RoomPage() {
       </section>
 
       <section className="floating-topbar floating-topbar--right">
-        <div className="presence-stack">
+        <div className="presence-stack" onClick={() => setShowUsers(!showUsers)} style={{ cursor: "pointer" }}>
           {state.participants.slice(0, 3).map((participant) => (
             <span key={participant.userId} className="avatar-chip" title={participant.name}>
               {initials(participant.name)}
@@ -387,6 +453,43 @@ export default function RoomPage() {
           <span className="presence-meta">{state.participants.length || 1} online</span>
         </div>
       </section>
+
+      {showUsers && (
+        <div className="users-dropdown">
+          <div className="users-dropdown__header">
+            <h3>Participants</h3>
+          </div>
+          <div className="users-dropdown__list">
+            {state.participants.map((p) => {
+              const isMe = p.socketId === socket?.id;
+              const isHost = state.hostUserId === state.user?.id;
+              const isBanned = state.bannedUsers.includes(p.userId);
+
+              return (
+                <div key={p.socketId} className="user-row">
+                  <div className="user-row__info">
+                    <span className="avatar-chip">{initials(p.name)}</span>
+                    <span className="user-name">
+                      {p.name} {isMe && "(You)"} {state.hostUserId === p.userId && "👑"}
+                    </span>
+                  </div>
+                  {isHost && !isMe && (
+                    <button 
+                      className={`block-btn ${isBanned ? 'is-banned' : ''}`}
+                      onClick={() => {
+                        if (isBanned) socket?.emit("unban-user", p.userId);
+                        else socket?.emit("ban-user", p.userId);
+                      }}
+                    >
+                      {isBanned ? "Unblock" : "Block"}
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       <aside className="floating-rail floating-rail--primary">
         {primaryTools.map((entry) => (

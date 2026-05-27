@@ -5,10 +5,11 @@ const CURSOR_COLORS = [
   "#9933FF", "#E91E63", "#00BCD4", "#8BC34A"
 ];
 
-function getCursorColor(userId) {
+function getCursorColor(id) {
+  if (!id) return CURSOR_COLORS[0];
   let hash = 0;
-  for (let i = 0; i < userId.length; i++) {
-    hash = userId.charCodeAt(i) + ((hash << 5) - hash);
+  for (let i = 0; i < id.length; i++) {
+    hash = id.charCodeAt(i) + ((hash << 5) - hash);
   }
   return CURSOR_COLORS[Math.abs(hash) % CURSOR_COLORS.length];
 }
@@ -31,7 +32,7 @@ export default function CursorOverlay({ cursors, viewport, boardSize }) {
             return null;
           }
 
-          const color = getCursorColor(cursor.userId);
+          const color = getCursorColor(cursor.socketId);
 
           return (
             <div

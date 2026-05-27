@@ -5,6 +5,7 @@ const {
   getRoomSession,
   loadRoomSession,
   persistRoomState,
+  getWasmModule
 } = require("./roomSessionStore");
 
 const BOARD_ITEM_KINDS = new Set(["stroke", "shape", "text", "sticky"]);
@@ -25,6 +26,8 @@ function emitRoomUsers(io, roomId, session) {
   io.to(roomId).emit("room-users", {
     count: session.users.size,
     participants: buildParticipants(session),
+    hostUserId: session.hostUserId,
+    bannedUsers: Array.from(session.bannedUsers || []),
   });
 }
 
@@ -46,63 +49,61 @@ function removeItem(items, itemId) {
   return items.filter((item) => item.id !== itemId);
 }
 
-function applyBoardAction(items, action) {
-  if (action.type === "create-item") {
-    if (items.some((item) => item.id === action.item.id)) {
-      return items;
-    }
 
-    return [...items, action.item];
+function applyBoardAction(session, action) {
+  const Module = getWasmModule();
+  const engine = session.engine;
+
+  if (action.type === "create-item" || action.type === "update-item") {
+    const item = action.item || action.nextItem;
+    const v = new Module.VectorInt();
+    (item.fractionalPosition || [50]).forEach(val => v.push_back(val));
+    engine.addElement(item.id, v, item.userId, JSON.stringify(item));
+    v.delete();
+  } else if (action.type === "delete-item") {
+    engine.deleteElement(action.item.id);
+  } else if (action.type === "clear-board") {
+    engine.clearBoard();
   }
-
-  if (action.type === "update-item") {
-    return replaceItem(items, action.nextItem);
-  }
-
-  if (action.type === "delete-item") {
-    return removeItem(items, action.item.id);
-  }
-
-  if (action.type === "clear-board") {
-    return [];
-  }
-
-  return items;
 }
 
-function revertBoardAction(items, action) {
+function revertBoardAction(session, action) {
+  const Module = getWasmModule();
+  const engine = session.engine;
+
   if (action.type === "create-item") {
-    return removeItem(items, action.item.id);
+    engine.deleteElement(action.item.id);
+  } else if (action.type === "update-item") {
+    const item = action.previousItem;
+    const v = new Module.VectorInt();
+    (item.fractionalPosition || [50]).forEach(val => v.push_back(val));
+    engine.addElement(item.id, v, item.userId, JSON.stringify(item));
+    v.delete();
+  } else if (action.type === "delete-item") {
+    const item = action.item;
+    const v = new Module.VectorInt();
+    (item.fractionalPosition || [50]).forEach(val => v.push_back(val));
+    engine.addElement(item.id, v, item.userId, JSON.stringify(item));
+    v.delete();
+  } else if (action.type === "clear-board") {
+    const items = action.items || [];
+    items.forEach(item => {
+      const v = new Module.VectorInt();
+      (item.fractionalPosition || [50]).forEach(val => v.push_back(val));
+      engine.addElement(item.id, v, item.userId, JSON.stringify(item));
+      v.delete();
+    });
   }
-
-  if (action.type === "update-item") {
-    return replaceItem(items, action.previousItem);
-  }
-
-  if (action.type === "delete-item") {
-    if (items.some((item) => item.id === action.item.id)) {
-      return items;
-    }
-
-    return [...items, action.item];
-  }
-
-  if (action.type === "clear-board") {
-    return action.items || [];
-  }
-
-  return items;
 }
 
 function createPayload(session, action, targetUserId) {
-  const history = session.historyStack || [];
-  const userHistory = targetUserId ? history.filter(a => a.senderId === targetUserId) : [];
-  const userRedo = targetUserId ? (session.redoStacks?.get(targetUserId) || []) : [];
+  const userHistory = targetUserId ? (session.historyStacks?.get(targetUserId) || []) : undefined;
+  const userRedo = targetUserId ? (session.redoStacks?.get(targetUserId) || []) : undefined;
 
   return {
     action,
-    historyCount: userHistory.length,
-    redoCount: userRedo.length,
+    historyCount: userHistory ? userHistory.length : undefined,
+    redoCount: userRedo ? userRedo.length : undefined,
     participants: buildParticipants(session),
     savedAt: session.lastSavedAt,
   };
@@ -126,6 +127,10 @@ module.exports = function registerSocketHandlers(io) {
           name: String(payload.user?.name || `Guest ${session.users.size + 1}`).slice(0, 32),
         };
 
+        if (!session.hostUserId) {
+          session.hostUserId = participant.userId;
+        }
+
         socket.join(roomId);
         socket.data.roomId = roomId;
         socket.data.userId = participant.userId;
@@ -135,12 +140,14 @@ module.exports = function registerSocketHandlers(io) {
 
         socket.emit("room-state", {
           roomId,
-          items: session.items,
-          historyCount: session.historyStack.length,
-          redoCount: session.redoStack.length,
+          items: JSON.parse(session.engine.getOrderedElements()),
+          historyCount: session.historyStacks.get(participant.userId)?.length || 0,
+          redoCount: session.redoStacks.get(participant.userId)?.length || 0,
           participants: buildParticipants(session),
           cursors: buildCursors(session),
           savedAt: session.lastSavedAt,
+          hostUserId: session.hostUserId,
+          bannedUsers: Array.from(session.bannedUsers),
         });
 
         emitRoomUsers(io, roomId, session);
@@ -151,11 +158,33 @@ module.exports = function registerSocketHandlers(io) {
       }
     });
 
+    socket.on("ban-user", (targetUserId) => {
+      const roomId = socket.data.roomId;
+      const session = getRoomSession(roomId);
+      if (!roomId || !session) return;
+      if (session.hostUserId === socket.data.userId) {
+        session.bannedUsers.add(targetUserId);
+        emitRoomUsers(io, roomId, session);
+        persistRoomState(roomId).catch(console.error);
+      }
+    });
+
+    socket.on("unban-user", (targetUserId) => {
+      const roomId = socket.data.roomId;
+      const session = getRoomSession(roomId);
+      if (!roomId || !session) return;
+      if (session.hostUserId === socket.data.userId) {
+        session.bannedUsers.delete(targetUserId);
+        emitRoomUsers(io, roomId, session);
+        persistRoomState(roomId).catch(console.error);
+      }
+    });
+
     socket.on("draw", (payload = {}) => {
       const roomId = socket.data.roomId;
       const session = getRoomSession(roomId);
 
-      if (!roomId || !session) {
+      if (!roomId || !session || session.bannedUsers.has(socket.data.userId)) {
         return;
       }
 
@@ -225,9 +254,10 @@ module.exports = function registerSocketHandlers(io) {
         };
 
         session.activeStrokes.delete(stroke.id);
-        session.items = applyBoardAction(session.items, action);
-        session.historyStack = [...session.historyStack, action];
-        session.redoStack = [];
+        applyBoardAction(session, action);
+        if (!session.historyStacks.has(socket.data.userId)) session.historyStacks.set(socket.data.userId, []);
+        session.historyStacks.get(socket.data.userId).push(action);
+        session.redoStacks.set(socket.data.userId, []);
 
         // Broadcast immediately to all other clients
         socket.to(roomId).emit("board-action", createPayload(session, action));
@@ -255,9 +285,10 @@ module.exports = function registerSocketHandlers(io) {
         item,
       };
 
-      session.items = applyBoardAction(session.items, action);
-      session.historyStack = [...session.historyStack, action];
-      session.redoStack = [];
+      applyBoardAction(session, action);
+      if (!session.historyStacks.has(socket.data.userId)) session.historyStacks.set(socket.data.userId, []);
+      session.historyStacks.get(socket.data.userId).push(action);
+      session.redoStacks.set(socket.data.userId, []);
 
       // Broadcast immediately
       socket.to(roomId).emit("board-action", createPayload(session, action));
@@ -284,9 +315,10 @@ module.exports = function registerSocketHandlers(io) {
         nextItem,
       };
 
-      session.items = applyBoardAction(session.items, action);
-      session.historyStack = [...session.historyStack, action];
-      session.redoStack = [];
+      applyBoardAction(session, action);
+      if (!session.historyStacks.has(socket.data.userId)) session.historyStacks.set(socket.data.userId, []);
+      session.historyStacks.get(socket.data.userId).push(action);
+      session.redoStacks.set(socket.data.userId, []);
 
       // Broadcast immediately
       socket.to(roomId).emit("board-action", createPayload(session, action));
@@ -312,9 +344,10 @@ module.exports = function registerSocketHandlers(io) {
         item,
       };
 
-      session.items = applyBoardAction(session.items, action);
-      session.historyStack = [...session.historyStack, action];
-      session.redoStack = [];
+      applyBoardAction(session, action);
+      if (!session.historyStacks.has(socket.data.userId)) session.historyStacks.set(socket.data.userId, []);
+      session.historyStacks.get(socket.data.userId).push(action);
+      session.redoStacks.set(socket.data.userId, []);
 
       // Broadcast immediately
       socket.to(roomId).emit("board-action", createPayload(session, action));
@@ -333,24 +366,16 @@ module.exports = function registerSocketHandlers(io) {
 
       if (!roomId || !session || !userId) return;
 
-      const history = session.historyStack || [];
-      let index = -1;
-      for (let i = history.length - 1; i >= 0; i--) {
-        if (history[i].senderId === userId) {
-          index = i;
-          break;
-        }
-      }
+      const userHistory = session.historyStacks.get(userId) || [];
+      if (userHistory.length === 0) return;
 
-      if (index === -1) return;
-
-      const action = session.historyStack.splice(index, 1)[0];
+      const action = userHistory.pop();
       
       let userRedo = session.redoStacks.get(userId) || [];
       userRedo.push(action);
       session.redoStacks.set(userId, userRedo);
 
-      session.items = revertBoardAction(session.items, action);
+      revertBoardAction(session, action);
       await persistRoomState(roomId);
 
       io.to(roomId).emit("room-saved", { savedAt: session.lastSavedAt });
@@ -372,9 +397,10 @@ module.exports = function registerSocketHandlers(io) {
       if (userRedo.length === 0) return;
 
       const action = userRedo.pop();
-      session.historyStack.push(action);
+      if (!session.historyStacks.has(userId)) session.historyStacks.set(userId, []);
+      session.historyStacks.get(userId).push(action);
 
-      session.items = applyBoardAction(session.items, action);
+      applyBoardAction(session, action);
       await persistRoomState(roomId);
 
       io.to(roomId).emit("room-saved", { savedAt: session.lastSavedAt });
@@ -387,20 +413,19 @@ module.exports = function registerSocketHandlers(io) {
       const roomId = socket.data.roomId;
       const session = getRoomSession(roomId);
 
-      if (!roomId || !session || session.items.length === 0) {
+      if (!roomId || !session || session.engine.getElementCount() === 0) {
         return;
       }
 
       const action = {
         type: "clear-board",
-        items: session.items,
+        items: JSON.parse(session.engine.getOrderedElements()),
         senderId: socket.data.userId
       };
 
-      session.items = [];
-      session.historyStack = [...session.historyStack, action];
-      // Clear all redo stacks on a global clear? Or just the sender's? 
-      // Typically global clear makes previous redos irrelevant.
+      session.engine.clearBoard();
+      if (!session.historyStacks.has(socket.data.userId)) session.historyStacks.set(socket.data.userId, []);
+      session.historyStacks.get(socket.data.userId).push(action);
       session.redoStacks.clear();
 
       await persistRoomState(roomId);
@@ -415,16 +440,17 @@ module.exports = function registerSocketHandlers(io) {
       const roomId = socket.data.roomId;
       const session = getRoomSession(roomId);
 
-      if (!roomId || !session) {
+      if (!roomId || !session || session.bannedUsers.has(socket.data.userId)) {
         return;
       }
 
       // Sync the server items array
       const action = { ...(payload.action || payload), senderId: socket.data.userId };
-      session.items = applyBoardAction(session.items, action);
+      applyBoardAction(session, action);
       
       if (action.type !== "cursor-move") {
-        session.historyStack = [...session.historyStack, action];
+        if (!session.historyStacks.has(socket.data.userId)) session.historyStacks.set(socket.data.userId, []);
+        session.historyStacks.get(socket.data.userId).push(action);
         // Clear only the sender's redo stack
         session.redoStacks.set(socket.data.userId, []);
       }

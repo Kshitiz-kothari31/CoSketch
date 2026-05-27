@@ -24,6 +24,8 @@ const initialState = {
   hydrated: false,
   savedAt: null,
   selectedItemId: null,
+  hostUserId: null,
+  bannedUsers: [],
 };
 
 function upsertById(items, nextItem, key = "id") {
@@ -55,6 +57,8 @@ function whiteboardReducer(state, action) {
         participants: action.payload.participants ?? state.participants,
         cursors: action.payload.cursors ?? state.cursors,
         savedAt: action.payload.savedAt !== undefined ? action.payload.savedAt : state.savedAt,
+        hostUserId: action.payload.hostUserId !== undefined ? action.payload.hostUserId : state.hostUserId,
+        bannedUsers: action.payload.bannedUsers !== undefined ? action.payload.bannedUsers : state.bannedUsers,
         hydrated: true,
       };
     case "APPLY_BOARD_ACTION":

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useMemo } from "react";
 import {
   clampZoom,
   drawBoardItem,
@@ -13,6 +13,7 @@ import {
 } from "../lib/boardUtils";
 import { useThrottle } from "../hooks/useThrottle";
 import CursorOverlay from "./CursorOverlay";
+import { Quadtree } from "../lib/Quadtree";
 
 function getCanvasPoint(event, canvas) {
   const bounds = canvas.getBoundingClientRect();
@@ -29,7 +30,7 @@ function buildStroke(tool, color, brushSize, userId, point) {
     kind: "stroke",
     tool,
     color,
-    size: tool === "highlighter" ? Math.max(brushSize * 2.2, 12) : brushSize,
+    size: tool === "highlighter" ? Math.max(brushSize * 2.2, 12) : (tool === "eraser" ? Math.max(20, brushSize * 5) : brushSize),
     opacity: tool === "highlighter" ? 0.22 : 1,
     userId,
     points: [point],
@@ -49,10 +50,17 @@ function buildShape(tool, color, brushSize, userId, point) {
   };
 }
 
-function getTopItemAtPoint(items, point) {
-  for (let index = items.length - 1; index >= 0; index -= 1) {
-    if (hitTestItem(point, items[index])) {
-      return items[index];
+function getTopItemAtPoint(quadtree, point) {
+  if (!quadtree) return null;
+  const candidatesSet = quadtree.queryPoint(point);
+  const candidates = Array.from(candidatesSet);
+
+  // Sort descending by Z-index (highest first)
+  candidates.sort((a, b) => b._zIndex - a._zIndex);
+
+  for (const item of candidates) {
+    if (hitTestItem(point, item)) {
+      return item;
     }
   }
 
@@ -78,6 +86,7 @@ export default function CanvasBoard({
 }) {
   const boardRef = useRef(null);
   const canvasRef = useRef(null);
+  const gridCanvasRef = useRef(null);
   const renderFrameRef = useRef(null);
   const [boardSize, setBoardSize] = useState({ width: 0, height: 0 });
   const sizeRef = useRef({ width: 0, height: 0 });
@@ -86,6 +95,15 @@ export default function CanvasBoard({
   const remoteStrokesRef = useRef(new Map());
   const interactionRef = useRef(null);
   const erasedIdsRef = useRef(new Set());
+
+  const quadtree = useMemo(() => {
+    const qt = new Quadtree({ x: -100000, y: -100000, width: 200000, height: 200000 }, 10, 8);
+    items.forEach((item, index) => {
+      item._zIndex = index;
+      qt.insert(item, getItemBounds(item));
+    });
+    return qt;
+  }, [items]);
 
   const [editingText, setEditingText] = useState(null);
   const editingTextRef = useRef(null);
@@ -161,14 +179,34 @@ export default function CanvasBoard({
 
       const context = canvas.getContext("2d");
       const { width, height } = sizeRef.current;
+      
+      const gridCanvas = gridCanvasRef.current;
+      if (gridCanvas) {
+        const gridContext = gridCanvas.getContext("2d");
+        drawGrid(gridContext, width, height, viewport);
+      }
 
-      drawGrid(context, width, height, viewport);
+      context.clearRect(0, 0, width, height);
 
       context.save();
       context.translate(viewport.x, viewport.y);
       context.scale(viewport.scale, viewport.scale);
 
-      items.forEach((item) => drawBoardItem(context, item));
+      // Calculate the physical screen boundaries mapped to the 2D world
+      const topLeft = screenToWorld({ x: 0, y: 0 }, viewport);
+      const bottomRight = screenToWorld({ x: width, y: height }, viewport);
+      const viewportBounds = {
+        x: topLeft.x,
+        y: topLeft.y,
+        width: bottomRight.x - topLeft.x,
+        height: bottomRight.y - topLeft.y
+      };
+
+      // O(log N) Spatial Culling: Get only items physically on screen
+      const visibleSet = quadtree.queryRange(viewportBounds);
+      const visibleItems = Array.from(visibleSet).sort((a, b) => a._zIndex - b._zIndex);
+
+      visibleItems.forEach((item) => drawBoardItem(context, item));
       remoteStrokesRef.current.forEach((item) => drawBoardItem(context, item));
 
       if (draftItemRef.current) {
@@ -236,6 +274,16 @@ export default function CanvasBoard({
       canvas.style.height = `${bounds.height}px`;
 
       context.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
+
+      const gridCanvas = gridCanvasRef.current;
+      if (gridCanvas) {
+        const gridContext = gridCanvas.getContext("2d");
+        gridCanvas.width = canvas.width;
+        gridCanvas.height = canvas.height;
+        gridCanvas.style.width = canvas.style.width;
+        gridCanvas.style.height = canvas.style.height;
+        gridContext.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
+      }
       scheduleRender();
     }
 
@@ -368,7 +416,7 @@ export default function CanvasBoard({
   }
 
   function deleteAtPoint(worldPoint) {
-    const target = getTopItemAtPoint(items, worldPoint);
+    const target = getTopItemAtPoint(quadtree, worldPoint);
 
     if (!target || erasedIdsRef.current.has(target.id)) {
       return;
@@ -475,11 +523,7 @@ export default function CanvasBoard({
       return;
     }
 
-    if (tool === "eraser") {
-      interactionRef.current = { type: "erase" };
-      deleteAtPoint(worldPoint);
-      return;
-    }
+    // Old eraser delete logic removed, now handled by draw logic
 
     if (tool === "hand") {
       interactionRef.current = {
@@ -492,7 +536,7 @@ export default function CanvasBoard({
     }
 
     if (tool === "select") {
-      const target = getTopItemAtPoint(items, worldPoint);
+      const target = getTopItemAtPoint(quadtree, worldPoint);
       dispatch({ type: "SET_SELECTED_ITEM", payload: target?.id || null });
 
       if (target) {
@@ -506,7 +550,7 @@ export default function CanvasBoard({
       return;
     }
 
-    if (tool === "pen" || tool === "highlighter") {
+    if (tool === "pen" || tool === "highlighter" || tool === "eraser") {
       const stroke = buildStroke(tool, color, brushSize, user.id, worldPoint);
       draftItemRef.current = stroke;
       interactionRef.current = { type: "draw" };
@@ -541,7 +585,6 @@ export default function CanvasBoard({
 
     if (tool === "eraser") {
       setCursorPos(screenPoint);
-      deleteAtPoint(worldPoint);
     } else {
       setCursorPos({ x: -100, y: -100 });
     }
@@ -719,7 +762,7 @@ export default function CanvasBoard({
     if (!socket || !user) return;
     const screenPoint = getCanvasPoint(event, canvasRef.current);
     const worldPoint = screenToWorld(screenPoint, viewport);
-    const target = getTopItemAtPoint(items, worldPoint);
+    const target = getTopItemAtPoint(quadtree, worldPoint);
 
     if (target && (target.kind === "text" || target.kind === "sticky")) {
       startTextPlacement(worldPoint, target.kind, target);
@@ -729,8 +772,25 @@ export default function CanvasBoard({
   return (
     <div className="board-surface" ref={boardRef}>
       <canvas
+        ref={gridCanvasRef}
+        className="board-grid-canvas"
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          pointerEvents: "none",
+          zIndex: 0,
+        }}
+      />
+      <canvas
         ref={canvasRef}
         className={`board-canvas board-canvas--${tool}`}
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          zIndex: 1,
+        }}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
