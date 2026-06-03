@@ -34,12 +34,12 @@ const drawTools = [
 const swatches = ["#202431", "#4B67FF", "#FF6B57", "#2BBE60", "#F4B942", "#CB69FF"];
 
 function getFallbackUser() {
-  const sessionId = sessionStorage.getItem("pulseboard-session-id") || crypto.randomUUID();
-  sessionStorage.setItem("pulseboard-session-id", sessionId);
+  const sessionId = sessionStorage.getItem("cosketch-session-id") || crypto.randomUUID();
+  sessionStorage.setItem("cosketch-session-id", sessionId);
   
   return {
     id: sessionId,
-    name: window.localStorage.getItem("pulseboard-name") || "Guest",
+    name: window.localStorage.getItem("cosketch-name") || "Guest",
   };
 }
 
@@ -85,8 +85,8 @@ export default function RoomPage() {
 
   const user = useMemo(() => {
     const nextUser = location.state?.user || getFallbackUser();
-    window.localStorage.setItem("pulseboard-user-id", nextUser.id);
-    window.localStorage.setItem("pulseboard-name", nextUser.name);
+    window.localStorage.setItem("cosketch-user-id", nextUser.id);
+    window.localStorage.setItem("cosketch-name", nextUser.name);
     return nextUser;
   }, [location.state]);
 

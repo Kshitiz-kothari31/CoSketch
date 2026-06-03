@@ -1,4 +1,4 @@
-# High-Performance Spatial Whiteboard with Quadtree Optimization & CRDT Sync
+# CoSketch: High-Performance Spatial Whiteboard with Quadtree Optimization & CRDT Sync
 
 An advanced, production-ready real-time collaborative whiteboard built on a hybrid high-performance architecture. It integrates a **C++ WebAssembly (Wasm) CRDT engine** for conflict-free element ordering, a custom **2D Spatial Quadtree** for rendering and hit-testing optimizations, and a reactive client-server synchronization pipeline powered by **React, Socket.IO, Node.js, and MongoDB**.
 

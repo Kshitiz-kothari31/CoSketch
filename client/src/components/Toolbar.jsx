@@ -21,7 +21,7 @@ export default function Toolbar({
       <div className="toolbar__brand">
         <div>
           <p className="eyebrow">Shared Room</p>
-          <h1>Pulseboard</h1>
+          <h1>CoSketch</h1>
         </div>
         <div className="room-pill">
           <span>{roomId}</span>

@@ -374,7 +374,7 @@ export default function CanvasBoard({
 
         const link = document.createElement("a");
         link.href = exportCanvas.toDataURL("image/png");
-        link.download = `pulseboard-${roomId}.png`;
+        link.download = `cosketch-${roomId}.png`;
         link.click();
       },
     };

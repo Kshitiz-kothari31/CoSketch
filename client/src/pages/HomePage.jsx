@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { createRoom } from "../lib/api";
 
 function ensureUserId() {
-  const storageKey = "pulseboard-user-id";
+  const storageKey = "cosketch-user-id";
   const existingUserId = window.localStorage.getItem(storageKey);
 
   if (existingUserId) {
@@ -19,7 +19,7 @@ function ensureUserId() {
 export default function HomePage() {
   const navigate = useNavigate();
   const [roomId, setRoomId] = useState("");
-  const [name, setName] = useState(window.localStorage.getItem("pulseboard-name") || "");
+  const [name, setName] = useState(window.localStorage.getItem("cosketch-name") || "");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [showJoinInput, setShowJoinInput] = useState(false);
@@ -31,7 +31,7 @@ export default function HomePage() {
       name: trimmedName,
     };
 
-    window.localStorage.setItem("pulseboard-name", trimmedName);
+    window.localStorage.setItem("cosketch-name", trimmedName);
 
     return user;
   }
@@ -70,7 +70,7 @@ export default function HomePage() {
         <p className="eyebrow">Real-Time Collaboration</p>
         <h1>Sketch, sync, and share ideas instantly.</h1>
         <p className="hero-copy">
-          Pulseboard gives every room a shared canvas with live drawing, undo and redo stacks,
+          CoSketch gives every room a shared canvas with live drawing, undo and redo stacks,
           persistent history, and remote cursors.
         </p>
 
