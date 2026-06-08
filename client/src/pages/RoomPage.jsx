@@ -386,26 +386,28 @@ export default function RoomPage() {
         apiRef={boardApiRef}
       />
 
-      <header className="floating-topbar floating-topbar--left">
-        <div>
-          <h1>Web whiteboard</h1>
-          <p>Real-time Sync</p>
-        </div>
-        <button type="button" className="icon-action" onClick={() => boardApiRef.current?.exportAsImage()} aria-label="Export board">
-          <BoardIcon name="share" />
-        </button>
-      </header>
+      <div className="topbar-left-group">
+        <header className="floating-topbar floating-topbar--left">
+          <div>
+            <h1>Web whiteboard</h1>
+            <p>Real-time Sync</p>
+          </div>
+          <button type="button" className="icon-action" onClick={() => boardApiRef.current?.exportAsImage()} aria-label="Export board">
+            <BoardIcon name="share" />
+          </button>
+        </header>
 
-      <section className="floating-topbar floating-topbar--center">
-        <span className="floating-badge floating-badge--save">
-          <BoardIcon name="target" />
-          <span className="badge-text">{formatLastSaved(state.savedAt)}</span>
-        </span>
-        <button type="button" className={`cta-button ${shareMessage ? "is-copied" : ""}`} onClick={handleShare}>
-          <BoardIcon name="share" />
-          <span className="btn-text">{shareMessage || "Share Room ID"}</span>
-        </button>
-      </section>
+        <section className="floating-topbar floating-topbar--center">
+          <span className="floating-badge floating-badge--save">
+            <BoardIcon name="target" />
+            <span className="badge-text">{formatLastSaved(state.savedAt)}</span>
+          </span>
+          <button type="button" className={`cta-button ${shareMessage ? "is-copied" : ""}`} onClick={handleShare}>
+            <BoardIcon name="share" />
+            <span className="btn-text">{shareMessage || "Share Room ID"}</span>
+          </button>
+        </section>
+      </div>
 
       <section className="floating-dock floating-dock--left">
         <button 
@@ -456,37 +458,42 @@ export default function RoomPage() {
         </button>
       </section>
 
-      <section className="floating-topbar floating-topbar--right" style={{ display: "flex", gap: "10px", alignItems: "center" }}>
-        <button
-          type="button"
-          className={`icon-action ${isVideoActive ? "is-active" : ""}`}
-          onClick={() => setIsVideoActive(!isVideoActive)}
-          title={isVideoActive ? "Leave call" : "Join video call"}
-          style={{
-            borderRadius: "50%",
-            width: "40px",
-            height: "40px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            background: isVideoActive ? "rgba(239, 68, 68, 0.15)" : "rgba(75, 103, 255, 0.08)",
-            border: "1px solid rgba(255, 255, 255, 0.08)",
-            color: isVideoActive ? "#f87171" : "#818cf8",
-            cursor: "pointer",
-            transition: "all 0.2s ease"
-          }}
-        >
-          <BoardIcon name="video" />
-        </button>
-        <div className="presence-stack" onClick={() => setShowUsers(!showUsers)} style={{ cursor: "pointer" }}>
-          {state.participants.slice(0, 3).map((participant) => (
-            <span key={participant.userId} className="avatar-chip" title={participant.name}>
-              {initials(participant.name)}
-            </span>
-          ))}
-          <span className="presence-meta">{state.participants.length || 1} online</span>
-        </div>
-      </section>
+      <div className="topbar-right-group">
+        <section className="floating-topbar floating-topbar--video-btn">
+          <button
+            type="button"
+            className={`icon-action ${isVideoActive ? "is-active" : ""}`}
+            onClick={() => setIsVideoActive(!isVideoActive)}
+            title={isVideoActive ? "Leave call" : "Join video call"}
+            style={{
+              borderRadius: "50%",
+              width: "40px",
+              height: "40px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              background: isVideoActive ? "rgba(239, 68, 68, 0.15)" : "rgba(75, 103, 255, 0.08)",
+              border: "1px solid rgba(255, 255, 255, 0.08)",
+              color: isVideoActive ? "#f87171" : "#818cf8",
+              cursor: "pointer",
+              transition: "all 0.2s ease"
+            }}
+          >
+            <BoardIcon name="video" />
+          </button>
+        </section>
+
+        <section className="floating-topbar floating-topbar--users" onClick={() => setShowUsers(!showUsers)} style={{ cursor: "pointer" }}>
+          <div className="presence-stack">
+            {state.participants.slice(0, 3).map((participant) => (
+              <span key={participant.userId} className="avatar-chip" title={participant.name}>
+                {initials(participant.name)}
+              </span>
+            ))}
+            <span className="presence-meta">{state.participants.length || 1} online</span>
+          </div>
+        </section>
+      </div>
 
       {showUsers && (
         <div className="users-dropdown">

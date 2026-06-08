@@ -296,10 +296,24 @@ a {
   transform: translateX(-50%);
 }
 
-.floating-topbar--right {
+.topbar-right-group {
+  position: absolute;
   top: 16px;
   right: 16px;
   z-index: 20;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.floating-topbar--video-btn,
+.floating-topbar--users {
+  position: static !important;
+  transform: none !important;
+}
+
+.floating-topbar--video-btn {
+  padding: 10px;
 }
 
 .history-controls {
@@ -723,17 +737,24 @@ a {
     font-size: 0.9rem;
   }
 
-  /* Make header elements and actions compact and responsive */
-  .floating-topbar--left {
+  /* Left and Center header groups flow inline on mobile */
+  .topbar-left-group {
+    position: absolute;
     top: 8px;
     left: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    z-index: 20;
   }
 
-  /* Top center topbar containing Share room and Save state */
+  .floating-topbar--left,
   .floating-topbar--center {
-    top: 8px;
-    left: 50%;
-    transform: translateX(-50%);
+    position: static !important;
+    transform: none !important;
+  }
+
+  .floating-topbar--center {
     gap: 8px;
     background: transparent;
     border: none;
@@ -781,10 +802,19 @@ a {
     margin-left: 4px;
   }
 
-  /* Top right topbar containing online list */
-  .floating-topbar--right {
+  /* Right header group on mobile */
+  .topbar-right-group {
+    position: absolute;
     top: 8px;
     right: 8px;
+    z-index: 20;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .floating-topbar--video-btn {
+    padding: 6px !important;
   }
 
   .presence-stack {
@@ -803,7 +833,7 @@ a {
 
   /* Connection status pill + Leave room link */
   .board-status {
-    top: 56px;
+    top: 68px;
     right: 8px;
     left: auto;
     padding: 4px;
