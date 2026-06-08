@@ -158,6 +158,20 @@ module.exports = function registerSocketHandlers(io) {
       }
     });
 
+    socket.on("update-call-status", (payload = {}) => {
+      const roomId = socket.data.roomId;
+      const session = getRoomSession(roomId);
+      if (!roomId || !session) return;
+
+      const participant = session.users.get(socket.id);
+      if (participant) {
+        participant.inCall = !!payload.inCall;
+        participant.micEnabled = !!payload.micEnabled;
+        participant.camEnabled = !!payload.camEnabled;
+        emitRoomUsers(io, roomId, session);
+      }
+    });
+
     socket.on("ban-user", (targetUserId) => {
       const roomId = socket.data.roomId;
       const session = getRoomSession(roomId);

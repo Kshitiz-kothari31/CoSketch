@@ -9,6 +9,7 @@ const mongoose = require("mongoose");
 const { Server } = require("socket.io");
 
 const roomRoutes = require("./routes/roomRoutes");
+const videoRoutes = require("./routes/videoRoutes");
 const registerSocketHandlers = require("./sockets/registerSocketHandlers");
 
 dotenv.config();
@@ -55,6 +56,7 @@ app.get("/api/health", (_request, response) => {
 });
 
 app.use("/api/rooms", roomRoutes);
+app.use("/api/video", videoRoutes);
 
 const clientBuildPath = path.resolve(__dirname, "../client/dist");
 
