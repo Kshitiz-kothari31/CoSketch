@@ -156,6 +156,13 @@ export default function BoardIcon({ name }) {
           <line x1="21" y1="12" x2="9" y2="12" />
         </svg>
       );
+    case "video":
+      return (
+        <svg {...iconProps}>
+          <path d="M23 7l-7 5 7 5V7z" />
+          <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
+        </svg>
+      );
     default:
       return (
         <svg {...iconProps}>

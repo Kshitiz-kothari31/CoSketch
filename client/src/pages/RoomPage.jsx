@@ -4,6 +4,7 @@ import { useWasmEngine } from "../hooks/useWasmEngine";
 
 import BoardIcon from "../components/BoardIcon";
 import CanvasBoard from "../components/CanvasBoard";
+import VideoCall from "../components/video/VideoCall";
 import { useWhiteboard } from "../context/WhiteboardContext";
 import { useSocket } from "../hooks/useSocket";
 import {
@@ -79,6 +80,7 @@ export default function RoomPage() {
   const [showHelp, setShowHelp] = useState(false);
   const [showDrawer, setShowDrawer] = useState(false);
   const [showUsers, setShowUsers] = useState(false);
+  const [isVideoActive, setIsVideoActive] = useState(false);
 
   // 1. Initialize Wasm Engine
   const { engine: wasmEngine, isReady } = useWasmEngine();
@@ -454,7 +456,28 @@ export default function RoomPage() {
         </button>
       </section>
 
-      <section className="floating-topbar floating-topbar--right">
+      <section className="floating-topbar floating-topbar--right" style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+        <button
+          type="button"
+          className={`icon-action ${isVideoActive ? "is-active" : ""}`}
+          onClick={() => setIsVideoActive(!isVideoActive)}
+          title={isVideoActive ? "Leave call" : "Join video call"}
+          style={{
+            borderRadius: "50%",
+            width: "40px",
+            height: "40px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            background: isVideoActive ? "rgba(239, 68, 68, 0.15)" : "rgba(75, 103, 255, 0.08)",
+            border: "1px solid rgba(255, 255, 255, 0.08)",
+            color: isVideoActive ? "#f87171" : "#818cf8",
+            cursor: "pointer",
+            transition: "all 0.2s ease"
+          }}
+        >
+          <BoardIcon name="video" />
+        </button>
         <div className="presence-stack" onClick={() => setShowUsers(!showUsers)} style={{ cursor: "pointer" }}>
           {state.participants.slice(0, 3).map((participant) => (
             <span key={participant.userId} className="avatar-chip" title={participant.name}>
@@ -595,6 +618,15 @@ export default function RoomPage() {
             </ul>
           </div>
         </div>
+      )}
+
+      {isVideoActive && (
+        <VideoCall
+          roomId={state.roomId || roomId}
+          userName={state.user?.name || "Guest"}
+          socket={socket}
+          onClose={() => setIsVideoActive(false)}
+        />
       )}
     </main>
   );
