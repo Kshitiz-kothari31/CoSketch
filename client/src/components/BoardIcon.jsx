@@ -28,9 +28,9 @@ export default function BoardIcon({ name }) {
     case "draw":
       return (
         <svg {...iconProps}>
-          <path d="M5 18c2-5 7-10 13-13" />
-          <path d="m16 4 3 3" />
-          <path d="M5 19h5" />
+          <path d="M12 20h9" />
+          <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
+          <path d="m15 5 3 3" />
         </svg>
       );
     case "highlighter":
@@ -43,19 +43,16 @@ export default function BoardIcon({ name }) {
     case "sticky":
       return (
         <svg {...iconProps}>
-          <path d="M6 5h12v10l-4 4H6V5Z" />
-          <path d="M14 15h4" />
-          <path d="M9 9h6" />
-          <path d="M9 12h4" />
+          <path d="M15 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V9z" />
+          <path d="M15 3v6h6" />
         </svg>
       );
     case "text":
       return (
         <svg {...iconProps}>
-          <path d="M5 6h14" />
-          <path d="M12 6v12" />
-          <path d="M8 18h8" />
-          <path d="M9 6h6" />
+          <polyline points="4 7 4 4 20 4 20 7" />
+          <line x1="9" y1="20" x2="15" y2="20" />
+          <line x1="12" y1="4" x2="12" y2="20" />
         </svg>
       );
     case "eraser":
@@ -68,9 +65,10 @@ export default function BoardIcon({ name }) {
     case "hand":
       return (
         <svg {...iconProps}>
-          <path d="M8 12V5a1 1 0 1 1 2 0v5" />
-          <path d="M12 12V4a1 1 0 1 1 2 0v8" />
-          <path d="M16 12V6a1 1 0 1 1 2 0v9a4 4 0 0 1-4 4h-2a6 6 0 0 1-6-6v-3a1 1 0 1 1 2 0v2" />
+          <path d="M18 11V6a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v0" />
+          <path d="M14 10V4a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v2" />
+          <path d="M10 10.5V6a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v8" />
+          <path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a1.2 1.2 0 0 1 0-1.7l.77-.77a2 2 0 0 1 2.3-.39l2.52 1.48V10.5" />
         </svg>
       );
     case "rectangle":
@@ -90,6 +88,32 @@ export default function BoardIcon({ name }) {
         <svg {...iconProps}>
           <path d="M5 18 18 8" />
           <path d="M12 8h6v6" />
+        </svg>
+      );
+    case "line":
+      return (
+        <svg {...iconProps}>
+          <path d="M5 19 19 5" />
+        </svg>
+      );
+    case "triangle":
+      return (
+        <svg {...iconProps}>
+          <path d="M12 3 2 21h20Z" />
+        </svg>
+      );
+    case "diamond":
+      return (
+        <svg {...iconProps}>
+          <path d="M12 3 3 12l9 9 9-9Z" />
+        </svg>
+      );
+    case "shapes":
+      return (
+        <svg {...iconProps}>
+          <path d="M8.3 10a3.5 3.5 0 0 1 1.5 5H4.8a3.5 3.5 0 0 1 3.5-5Z" />
+          <path d="M16 2.2a2.2 2.2 0 1 1-2.2 2.2 2.2 0 0 1 2.2-2.2Z" />
+          <rect x="12" y="11" width="8" height="8" rx="2" />
         </svg>
       );
     case "undo":
@@ -133,6 +157,21 @@ export default function BoardIcon({ name }) {
           <path d="M16 8 12 4 8 8" />
           <path d="M12 4v12" />
           <path d="M5 14v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4" />
+        </svg>
+      );
+    case "download":
+      return (
+        <svg {...iconProps}>
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+          <polyline points="7 10 12 15 17 10" />
+          <line x1="12" y1="15" x2="12" y2="3" />
+        </svg>
+      );
+    case "link":
+      return (
+        <svg {...iconProps}>
+          <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+          <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
         </svg>
       );
     case "spark":

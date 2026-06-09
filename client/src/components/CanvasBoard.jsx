@@ -10,6 +10,7 @@ import {
   worldToScreen,
   translateItem,
   zoomViewportAtPoint,
+  getContrastColor,
 } from "../lib/boardUtils";
 import { useThrottle } from "../hooks/useThrottle";
 import CursorOverlay from "./CursorOverlay";
@@ -94,7 +95,6 @@ export default function CanvasBoard({
   const previewMoveRef = useRef(null);
   const remoteStrokesRef = useRef(new Map());
   const interactionRef = useRef(null);
-  const erasedIdsRef = useRef(new Set());
 
   const quadtree = useMemo(() => {
     const qt = new Quadtree({ x: -100000, y: -100000, width: 200000, height: 200000 }, 10, 8);
@@ -415,29 +415,20 @@ export default function CanvasBoard({
     }
   }
 
-  function deleteAtPoint(worldPoint) {
-    const target = getTopItemAtPoint(quadtree, worldPoint);
-
-    if (!target || erasedIdsRef.current.has(target.id)) {
-      return;
-    }
-
-    erasedIdsRef.current.add(target.id);
-
-    if (selectedItemId === target.id) {
-      dispatch({ type: "SET_SELECTED_ITEM", payload: null });
-    }
-
-    commitDelete(target);
-  }
-
   function startTextPlacement(worldPoint, kind, existingItem = null) {
+    let stickyColor = color;
+    if (kind === "sticky" && !existingItem) {
+      const stickyColors = ["#FEF3BD", "#FEE4EC", "#DDF4FE", "#E4F9E0", "#F4E3FE", "#FFEAD9"];
+      stickyColor = stickyColors[Math.floor(Math.random() * stickyColors.length)];
+    }
+
     const newState = {
       worldPoint: existingItem ? { x: existingItem.x, y: existingItem.y } : worldPoint,
       kind,
       text: existingItem ? existingItem.text : "",
       originalItem: existingItem,
-      token: crypto.randomUUID()
+      token: crypto.randomUUID(),
+      stickyColor: existingItem ? existingItem.color : stickyColor,
     };
     setEditingText(newState);
     editingTextRef.current = newState;
@@ -461,6 +452,10 @@ export default function CanvasBoard({
     }
 
     const finalId = originalItem ? originalItem.id : `${user.id}-${crypto.randomUUID()}`;
+    const finalHeight = kind === "sticky" && textAreaRef.current
+      ? Math.max(200, textAreaRef.current.scrollHeight)
+      : 200;
+
     const item =
       kind === "sticky"
         ? {
@@ -468,9 +463,9 @@ export default function CanvasBoard({
           kind: "sticky",
           x: worldPoint.x,
           y: worldPoint.y,
-          width: 220,
-          height: 180,
-          color: originalItem ? originalItem.color : color,
+          width: 200,
+          height: finalHeight,
+          color: originalItem ? originalItem.color : current.stickyColor,
           text: text.trim(),
           userId: user.id,
         }
@@ -516,7 +511,6 @@ export default function CanvasBoard({
 
     const screenPoint = getCanvasPoint(event, canvasRef.current);
     const worldPoint = screenToWorld(screenPoint, viewport);
-    erasedIdsRef.current.clear();
 
     if (tool === "sticky" || tool === "text") {
       startTextPlacement(worldPoint, tool);
@@ -570,7 +564,14 @@ export default function CanvasBoard({
       return;
     }
 
-    if (tool === "rectangle" || tool === "ellipse" || tool === "arrow") {
+    if (
+      tool === "rectangle" ||
+      tool === "ellipse" ||
+      tool === "arrow" ||
+      tool === "line" ||
+      tool === "triangle" ||
+      tool === "diamond"
+    ) {
       const shape = buildShape(tool, color, brushSize, user.id, worldPoint);
       draftItemRef.current = shape;
       interactionRef.current = { type: "shape" };
@@ -614,11 +615,6 @@ export default function CanvasBoard({
       const dy = worldPoint.y - interactionRef.current.startWorldPoint.y;
       previewMoveRef.current = translateItem(interactionRef.current.originItem, dx, dy);
       scheduleRender();
-      return;
-    }
-
-    if (interactionRef.current.type === "erase") {
-      deleteAtPoint(worldPoint);
       return;
     }
 
@@ -670,7 +666,6 @@ export default function CanvasBoard({
     const worldPoint = screenToWorld(screenPoint, viewport);
     const interaction = interactionRef.current;
     interactionRef.current = null;
-    erasedIdsRef.current.clear();
 
     if (!interaction) {
       return;
@@ -808,7 +803,15 @@ export default function CanvasBoard({
         <textarea
           ref={textAreaRef}
           value={editingText.text}
-          onChange={(e) => updateEditingText(e.target.value)}
+          onChange={(e) => {
+            e.target.style.height = "auto";
+            e.target.style.height = `${e.target.scrollHeight}px`;
+            if (editingText.kind === "text") {
+              e.target.style.width = "auto";
+              e.target.style.width = `${e.target.scrollWidth}px`;
+            }
+            updateEditingText(e.target.value);
+          }}
           onBlur={() => finishTextPlacement(editingText.token)}
           onKeyDown={(e) => {
             if (e.key === "Enter" && !e.shiftKey) {
@@ -824,24 +827,27 @@ export default function CanvasBoard({
             top: worldToScreen(editingText.worldPoint, viewport).y,
             transform: `scale(${viewport.scale})`,
             transformOrigin: "top left",
-            padding: editingText.kind === "sticky" ? "36px 18px 18px 18px" : "8px",
+            padding: editingText.kind === "sticky" ? "16px 16px 16px 16px" : "8px",
             marginTop: editingText.kind === "text" ? `-${Math.max(18, brushSize * 5)}px` : "0",
             marginLeft: editingText.kind === "text" ? "-8px" : "0",
-            width: editingText.kind === "sticky" ? "220px" : "300px",
-            height: editingText.kind === "sticky" ? "180px" : "150px",
+            width: editingText.kind === "sticky" ? "200px" : "auto",
+            height: "auto",
+            minWidth: editingText.kind === "text" ? "50px" : undefined,
+            minHeight: editingText.kind === "sticky" ? "200px" : "50px",
             fontSize: editingText.kind === "sticky" ? "22px" : `${Math.max(18, brushSize * 5)}px`,
             fontWeight: 700,
             fontFamily: `"Avenir Next", "Segoe UI", sans-serif`,
-            color: editingText.kind === "sticky" ? "#2B2F3A" : color,
-            background: editingText.kind === "sticky" ? color : "rgba(255, 255, 255, 0.9)",
-            boxShadow: editingText.kind === "sticky" ? "0 10px 22px rgba(23, 31, 56, 0.08)" : "0 4px 12px rgba(0,0,0,0.1)",
-            border: editingText.kind === "text" ? `2px solid var(--blue)` : "none",
-            borderRadius: editingText.kind === "sticky" ? "24px" : "8px",
+            color: editingText.kind === "sticky" ? getContrastColor(editingText.stickyColor) : color,
+            background: editingText.kind === "sticky" ? editingText.stickyColor : "transparent",
+            boxShadow: editingText.kind === "sticky" ? "0 4px 10px rgba(0, 0, 0, 0.15)" : "none",
+            border: "none",
+            borderRadius: editingText.kind === "sticky" ? "2px" : "0",
             outline: "none",
-            resize: editingText.kind === "text" ? "both" : "none",
+            resize: "none",
             zIndex: 100,
             whiteSpace: "pre-wrap",
             lineHeight: editingText.kind === "sticky" ? "28px" : "1.28",
+            overflow: "hidden",
           }}
           placeholder={editingText.kind === "sticky" ? "Write the sticky note text..." : "Write text..."}
         />
@@ -853,8 +859,8 @@ export default function CanvasBoard({
             position: "absolute",
             left: cursorPos.x,
             top: cursorPos.y,
-            width: `${Math.max(20, brushSize * 5)}px`,
-            height: `${Math.max(20, brushSize * 5)}px`,
+            width: `${Math.max(20, brushSize * 5) * viewport.scale}px`,
+            height: `${Math.max(20, brushSize * 5) * viewport.scale}px`,
             pointerEvents: "none",
             zIndex: 999
           }}

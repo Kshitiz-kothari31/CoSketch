@@ -4,8 +4,8 @@ export const DEFAULT_VIEWPORT = {
   scale: 1,
 };
 
-export const MIN_ZOOM = 0.45;
-export const MAX_ZOOM = 2.4;
+export const MIN_ZOOM = 0.1;
+export const MAX_ZOOM = 1.0;
 
 export function clampZoom(value) {
   return Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, value));
@@ -163,8 +163,8 @@ export function getItemBounds(item) {
     return {
       x: item.x,
       y: item.y,
-      width: item.width || 220,
-      height: item.height || 180,
+      width: item.width || 200,
+      height: item.height || 200,
     };
   }
 
@@ -222,6 +222,11 @@ export function translateItem(item, dx, dy) {
 
 export function hitTestItem(point, item) {
   if (item.kind === "stroke") {
+    if (item.points.length === 1) {
+      const dist = Math.hypot(point.x - item.points[0].x, point.y - item.points[0].y);
+      return dist <= ((item.size || 4) / 2) + 8;
+    }
+
     for (let index = 0; index < item.points.length - 1; index += 1) {
       const distance = pointToSegmentDistance(point, item.points[index], item.points[index + 1]);
 
@@ -262,6 +267,30 @@ export function hitTestItem(point, item) {
         ((point.y - centerY) * (point.y - centerY)) / (radiusY * radiusY);
 
       return value >= 0.76 && value <= 1.24;
+    }
+
+    if (item.shapeType === "triangle") {
+      const p1 = { x: rect.x + rect.width / 2, y: rect.y };
+      const p2 = { x: rect.x + rect.width, y: rect.y + rect.height };
+      const p3 = { x: rect.x, y: rect.y + rect.height };
+      return (
+        pointToSegmentDistance(point, p1, p2) <= tolerance ||
+        pointToSegmentDistance(point, p2, p3) <= tolerance ||
+        pointToSegmentDistance(point, p3, p1) <= tolerance
+      );
+    }
+
+    if (item.shapeType === "diamond") {
+      const p1 = { x: rect.x + rect.width / 2, y: rect.y };
+      const p2 = { x: rect.x + rect.width, y: rect.y + rect.height / 2 };
+      const p3 = { x: rect.x + rect.width / 2, y: rect.y + rect.height };
+      const p4 = { x: rect.x, y: rect.y + rect.height / 2 };
+      return (
+        pointToSegmentDistance(point, p1, p2) <= tolerance ||
+        pointToSegmentDistance(point, p2, p3) <= tolerance ||
+        pointToSegmentDistance(point, p3, p4) <= tolerance ||
+        pointToSegmentDistance(point, p4, p1) <= tolerance
+      );
     }
 
     return pointToSegmentDistance(point, item.start, item.end) <= tolerance;
@@ -312,6 +341,15 @@ function drawWrappedText(context, text, x, y, maxWidth, lineHeight) {
   if (line) {
     context.fillText(line, x, nextY);
   }
+}
+
+export function getContrastColor(hex) {
+  if (!hex || !hex.startsWith("#")) return "#2B2F3A";
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  const yiq = (r * 299 + g * 587 + b * 114) / 1000;
+  return yiq >= 128 ? "#2B2F3A" : "#FFFFFF";
 }
 
 export function drawBoardItem(context, item) {
@@ -383,6 +421,26 @@ export function drawBoardItem(context, item) {
         Math.PI * 2,
       );
       context.stroke();
+    } else if (item.shapeType === "line") {
+      context.beginPath();
+      context.moveTo(item.start.x, item.start.y);
+      context.lineTo(item.end.x, item.end.y);
+      context.stroke();
+    } else if (item.shapeType === "triangle") {
+      context.beginPath();
+      context.moveTo(rect.x + rect.width / 2, rect.y);
+      context.lineTo(rect.x + rect.width, rect.y + rect.height);
+      context.lineTo(rect.x, rect.y + rect.height);
+      context.closePath();
+      context.stroke();
+    } else if (item.shapeType === "diamond") {
+      context.beginPath();
+      context.moveTo(rect.x + rect.width / 2, rect.y);
+      context.lineTo(rect.x + rect.width, rect.y + rect.height / 2);
+      context.lineTo(rect.x + rect.width / 2, rect.y + rect.height);
+      context.lineTo(rect.x, rect.y + rect.height / 2);
+      context.closePath();
+      context.stroke();
     } else {
       const angle = Math.atan2(item.end.y - item.start.y, item.end.x - item.start.x);
       const arrowSize = 14 + (item.size || 3);
@@ -424,20 +482,20 @@ export function drawBoardItem(context, item) {
   }
 
   if (item.kind === "sticky") {
-    const width = item.width || 220;
-    const height = item.height || 180;
-    drawRoundedRect(context, item.x, item.y, width, height, 24);
+    const width = item.width || 200;
+    const height = item.height || 200;
+    drawRoundedRect(context, item.x, item.y, width, height, 2);
     context.fillStyle = item.color;
-    context.fill();
-    context.shadowColor = "rgba(23, 31, 56, 0.08)";
-    context.shadowBlur = 22;
-    context.shadowOffsetY = 10;
+    context.shadowColor = "rgba(0, 0, 0, 0.15)";
+    context.shadowBlur = 10;
+    context.shadowOffsetY = 4;
     context.fill();
     context.shadowColor = "transparent";
 
-    context.fillStyle = "#2B2F3A";
+    context.textBaseline = "alphabetic";
+    context.fillStyle = getContrastColor(item.color);
     context.font = `700 22px "Avenir Next", "Segoe UI", sans-serif`;
-    drawWrappedText(context, item.text, item.x + 18, item.y + 36, width - 36, 28);
+    drawWrappedText(context, item.text, item.x + 16, item.y + 37, width - 32, 28);
     context.restore();
   }
 }

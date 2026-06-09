@@ -364,6 +364,7 @@ a {
   background: var(--blue);
   color: white;
   font-weight: 800;
+  gap: 8px;
 }
 
 .floating-badge {
@@ -422,11 +423,12 @@ a {
 .floating-rail--secondary {
   top: 132px;
   left: 100px;
-  width: 156px;
+  width: 168px;
   max-height: calc(100vh - 220px);
-  padding: 14px 12px;
+  padding: 14px 8px;
   justify-items: stretch;
   overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .floating-rail--secondary::-webkit-scrollbar {
@@ -444,6 +446,35 @@ a {
 }
 
 .floating-rail--secondary::-webkit-scrollbar-thumb:hover {
+  background: rgba(32, 36, 49, 0.25);
+}
+
+.floating-rail--tertiary {
+  top: 132px;
+  left: 276px;
+  width: 168px;
+  max-height: calc(100vh - 220px);
+  padding: 14px 8px;
+  justify-items: stretch;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.floating-rail--tertiary::-webkit-scrollbar {
+  width: 6px;
+}
+
+.floating-rail--tertiary::-webkit-scrollbar-track {
+  background: transparent;
+  margin: 10px 0;
+}
+
+.floating-rail--tertiary::-webkit-scrollbar-thumb {
+  background: rgba(32, 36, 49, 0.15);
+  border-radius: 6px;
+}
+
+.floating-rail--tertiary::-webkit-scrollbar-thumb:hover {
   background: rgba(32, 36, 49, 0.25);
 }
 
@@ -479,7 +510,7 @@ a {
   width: 100%;
   min-height: 76px;
   height: auto;
-  padding: 10px 8px 9px;
+  padding: 10px 4px 9px;
   display: grid;
   gap: 6px;
   justify-items: center;
@@ -509,7 +540,7 @@ a {
 .draw-tool-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
+  gap: 8px;
   width: 100%;
 }
 
@@ -561,18 +592,63 @@ a {
 }
 
 .swatch-column {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  display: flex;
+  flex-wrap: wrap;
   gap: 10px;
   width: 100%;
-  justify-items: center;
+  justify-content: center;
 }
 
 .color-dot {
   width: 32px;
   height: 32px;
-  border-radius: 999px;
-  border: 2px solid rgba(32, 36, 49, 0.12);
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.custom-color-wrapper {
+  position: relative;
+}
+
+.custom-color-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent !important;
+  border: 1px dashed rgba(32, 36, 49, 0.4) !important;
+  color: #2b2f3a;
+}
+
+.custom-color-btn:hover {
+  background: rgba(32, 36, 49, 0.05) !important;
+  border-style: solid !important;
+}
+
+.custom-color-btn svg {
+  width: 16px;
+  height: 16px;
+  opacity: 0.7;
+}
+
+.custom-color-popover {
+  position: absolute;
+  bottom: calc(100% + 16px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9999;
+  background: white;
+  padding: 12px;
+  border-radius: 12px;
+  box-shadow: 0 12px 32px rgba(0,0,0,0.15);
+  border: 1px solid rgba(0,0,0,0.05);
+}
+
+.custom-color-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9998;
 }
 
 .color-dot.is-selected {
@@ -971,6 +1047,28 @@ a {
     overflow-x: hidden;
   }
 
+  .floating-rail--tertiary {
+    top: auto;
+    bottom: 332px; /* Sit right above the secondary drawing panel */
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+    width: calc(100vw - 24px);
+    max-width: 380px;
+    max-height: 250px;
+    padding: 12px 14px;
+    border-radius: 20px;
+    box-shadow: var(--shadow);
+    border: 1px solid var(--panel-border);
+    background: var(--panel);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    z-index: 5;
+  }
+
   .floating-rail--secondary .rail-title {
     font-size: 0.75rem;
     margin-bottom: 2px;
@@ -1071,6 +1169,13 @@ a {
     max-height: 220px;
     padding: 10px;
     bottom: 64px;
+  }
+
+  .floating-rail--tertiary {
+    max-width: 300px;
+    max-height: 220px;
+    padding: 10px;
+    bottom: 294px;
   }
 
   .swatch-column {
@@ -1213,5 +1318,132 @@ a {
     border-radius: 24px 24px 0 0;
     padding: 24px 20px 40px;
     box-shadow: 0 -12px 34px rgba(24, 28, 42, 0.12);
+  }
+}
+
+/* ==========================================
+   Custom Tooltips (data-tooltip)
+   ========================================== */
+
+/* Tooltip container base styling */
+[data-tooltip] {
+  position: relative;
+}
+
+/* Tooltip body */
+[data-tooltip]::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  background: var(--ink);
+  color: #ffffff;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+  box-shadow: 0 6px 20px rgba(16, 20, 30, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  z-index: 10000;
+}
+
+/* Tooltip caret (arrow) */
+[data-tooltip]::before {
+  content: "";
+  position: absolute;
+  border-width: 5px;
+  border-style: solid;
+  border-color: transparent;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+  z-index: 10000;
+}
+
+/* --- Position: Top (Default) --- */
+[data-tooltip]::after {
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%) translateY(4px);
+}
+[data-tooltip]::before {
+  bottom: calc(100% + 2px);
+  left: 50%;
+  transform: translateX(-50%) translateY(4px);
+  border-top-color: var(--ink);
+}
+[data-tooltip]:hover::after {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+[data-tooltip]:hover::before {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* --- Position: Right --- */
+@media (min-width: 769px) {
+  [data-tooltip-position="right"]::after {
+    bottom: auto;
+    left: calc(100% + 8px);
+    top: 50%;
+    transform: translateY(-50%) translateX(-4px);
+  }
+  [data-tooltip-position="right"]::before {
+    bottom: auto;
+    left: calc(100% + 2px);
+    top: 50%;
+    transform: translateY(-50%) translateX(-4px);
+    border-top-color: transparent;
+    border-right-color: var(--ink);
+  }
+  [data-tooltip-position="right"]:hover::after {
+    opacity: 1;
+    transform: translateY(-50%) translateX(0);
+  }
+  [data-tooltip-position="right"]:hover::before {
+    opacity: 1;
+    transform: translateY(-50%) translateX(0);
+  }
+}
+
+/* --- Position: Bottom --- */
+[data-tooltip-position="bottom"]::after {
+  bottom: auto;
+  top: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%) translateY(-4px);
+}
+[data-tooltip-position="bottom"]::before {
+  bottom: auto;
+  top: calc(100% + 2px);
+  left: 50%;
+  transform: translateX(-50%) translateY(-4px);
+  border-top-color: transparent;
+  border-bottom-color: var(--ink);
+}
+[data-tooltip-position="bottom"]:hover::after {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+[data-tooltip-position="bottom"]:hover::before {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* Prevent tooltip displaying when the target button is disabled */
+[data-tooltip]:disabled::after,
+[data-tooltip]:disabled::before {
+  display: none !important;
+}
+
+/* Hide card tooltips on desktop where text labels are already visible */
+@media (min-width: 769px) {
+  .rail-button--card::after,
+  .rail-button--card::before {
+    display: none !important;
   }
 }

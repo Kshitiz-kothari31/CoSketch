@@ -39,7 +39,7 @@ function upsertById(items, nextItem, key = "id") {
 }
 
 function whiteboardReducer(state, action) {
-  const drawTools = new Set(["pen", "highlighter", "eraser", "rectangle", "ellipse", "arrow"]);
+  const drawTools = new Set(["pen", "highlighter", "eraser", "rectangle", "ellipse", "arrow", "line", "triangle", "diamond"]);
 
   switch (action.type) {
     case "SET_USER":

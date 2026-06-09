@@ -5,6 +5,7 @@ import { useWasmEngine } from "../hooks/useWasmEngine";
 import BoardIcon from "../components/BoardIcon";
 import CanvasBoard from "../components/CanvasBoard";
 import VideoCall from "../components/video/VideoCall";
+import { HexColorPicker } from "react-colorful";
 import { useWhiteboard } from "../context/WhiteboardContext";
 import { useSocket } from "../hooks/useSocket";
 import {
@@ -18,6 +19,8 @@ import { SOCKET_URL } from "../lib/api";
 const primaryTools = [
   { id: "select", label: "Select" },
   { id: "draw", label: "Draw" },
+  { id: "eraser", label: "Eraser" },
+  { id: "shapes", label: "Shapes" },
   { id: "sticky", label: "Sticky" },
   { id: "text", label: "Text" },
   { id: "hand", label: "Hand" },
@@ -26,10 +29,15 @@ const primaryTools = [
 const drawTools = [
   { id: "pen", label: "Pen" },
   { id: "highlighter", label: "Highlight" },
-  { id: "eraser", label: "Eraser" },
+];
+
+const shapeTools = [
+  { id: "line", label: "Line" },
+  { id: "arrow", label: "Arrow" },
   { id: "rectangle", label: "Rectangle" },
   { id: "ellipse", label: "Ellipse" },
-  { id: "arrow", label: "Arrow" },
+  { id: "triangle", label: "Triangle" },
+  { id: "diamond", label: "Diamond" },
 ];
 
 const swatches = ["#202431", "#4B67FF", "#FF6B57", "#2BBE60", "#F4B942", "#CB69FF"];
@@ -79,8 +87,11 @@ export default function RoomPage() {
   const [shareMessage, setShareMessage] = useState("");
   const [showHelp, setShowHelp] = useState(false);
   const [showDrawer, setShowDrawer] = useState(false);
+  const [showShapesDrawer, setShowShapesDrawer] = useState(false);
+  const [showEraserDrawer, setShowEraserDrawer] = useState(false);
   const [showUsers, setShowUsers] = useState(false);
   const [isVideoActive, setIsVideoActive] = useState(false);
+  const [showColorPicker, setShowColorPicker] = useState(false);
 
   // 1. Initialize Wasm Engine
   const { engine: wasmEngine, isReady } = useWasmEngine();
@@ -261,14 +272,32 @@ export default function RoomPage() {
   // Helper Functions
   const setTool = (t) => dispatch({ type: "SET_TOOL", payload: t });
   const isDrawToolActive = drawTools.some((e) => e.id === state.tool);
+  const isShapeTool = (t) => shapeTools.some((e) => e.id === t);
   const handlePrimaryToolSelect = (t) => {
+    setShowColorPicker(false);
     if (t === "draw") {
       setShowDrawer((prev) => !prev);
+      setShowShapesDrawer(false);
+      setShowEraserDrawer(false);
       if (!isDrawToolActive) {
-        setTool(state.lastDrawTool || "pen");
+        setTool(state.lastDrawTool === "highlighter" ? "highlighter" : "pen");
       }
+    } else if (t === "shapes") {
+      setShowShapesDrawer((prev) => !prev);
+      setShowDrawer(false);
+      setShowEraserDrawer(false);
+      if (!isShapeTool(state.tool)) {
+        setTool(isShapeTool(state.lastDrawTool) ? state.lastDrawTool : "rectangle");
+      }
+    } else if (t === "eraser") {
+      setShowEraserDrawer((prev) => !prev);
+      setShowDrawer(false);
+      setShowShapesDrawer(false);
+      setTool("eraser");
     } else {
       setShowDrawer(false);
+      setShowShapesDrawer(false);
+      setShowEraserDrawer(false);
       setTool(t);
     }
   };
@@ -392,8 +421,15 @@ export default function RoomPage() {
             <h1>Web whiteboard</h1>
             <p>Real-time Sync</p>
           </div>
-          <button type="button" className="icon-action" onClick={() => boardApiRef.current?.exportAsImage()} aria-label="Export board">
-            <BoardIcon name="share" />
+          <button
+            type="button"
+            className="icon-action"
+            onClick={() => boardApiRef.current?.exportAsImage()}
+            aria-label="Export board"
+            data-tooltip="Export PNG"
+            data-tooltip-position="bottom"
+          >
+            <BoardIcon name="download" />
           </button>
         </header>
 
@@ -403,7 +439,7 @@ export default function RoomPage() {
             <span className="badge-text">{formatLastSaved(state.savedAt)}</span>
           </span>
           <button type="button" className={`cta-button ${shareMessage ? "is-copied" : ""}`} onClick={handleShare}>
-            <BoardIcon name="share" />
+            <BoardIcon name="link" />
             <span className="btn-text">{shareMessage || "Share Room ID"}</span>
           </button>
         </section>
@@ -415,7 +451,7 @@ export default function RoomPage() {
           className="dock-button" 
           onClick={() => socket?.emit("undo")}
           disabled={state.historyCount === 0}
-          title="Undo"
+          data-tooltip="Undo"
         >
           <BoardIcon name="undo" />
         </button>
@@ -424,7 +460,7 @@ export default function RoomPage() {
           className="dock-button" 
           onClick={() => socket?.emit("redo")}
           disabled={state.redoCount === 0}
-          title="Redo"
+          data-tooltip="Redo"
         >
           <BoardIcon name="redo" />
         </button>
@@ -435,7 +471,7 @@ export default function RoomPage() {
           type="button" 
           className="dock-button" 
           onClick={() => zoom(0.8)}
-          title="Zoom out"
+          data-tooltip="Zoom Out"
         >
           <BoardIcon name="minus" />
         </button>
@@ -444,7 +480,7 @@ export default function RoomPage() {
           type="button" 
           className="dock-button" 
           onClick={() => zoom(1.2)}
-          title="Zoom in"
+          data-tooltip="Zoom In"
         >
           <BoardIcon name="plus" />
         </button>
@@ -452,7 +488,7 @@ export default function RoomPage() {
           type="button" 
           className="dock-button" 
           onClick={() => setShowHelp(true)}
-          title="Board Guide"
+          data-tooltip="Board Guide"
         >
           <BoardIcon name="help" />
         </button>
@@ -464,7 +500,8 @@ export default function RoomPage() {
             type="button"
             className={`icon-action ${isVideoActive ? "is-active" : ""}`}
             onClick={() => setIsVideoActive(!isVideoActive)}
-            title={isVideoActive ? "Leave call" : "Join video call"}
+            data-tooltip={isVideoActive ? "Leave Call" : "Join Video Call"}
+            data-tooltip-position="bottom"
             style={{
               borderRadius: "50%",
               width: "40px",
@@ -533,16 +570,32 @@ export default function RoomPage() {
       )}
 
       <aside className="floating-rail floating-rail--primary">
-        {primaryTools.map((entry) => (
-          <button
-            key={entry.id}
-            type="button"
-            className={(entry.id === "draw" ? isDrawToolActive : state.tool === entry.id) ? "rail-button rail-button--compact is-active" : "rail-button rail-button--compact"}
-            onClick={() => handlePrimaryToolSelect(entry.id)}
-          >
-            <BoardIcon name={entry.id} />
-          </button>
-        ))}
+        {primaryTools.map((entry) => {
+          let isActive = false;
+          let iconName = entry.id;
+
+          if (entry.id === "draw") {
+            isActive = isDrawToolActive;
+          } else if (entry.id === "shapes") {
+            isActive = isShapeTool(state.tool);
+            iconName = isActive ? state.tool : "shapes";
+          } else {
+            isActive = state.tool === entry.id;
+          }
+
+          return (
+            <button
+              key={entry.id}
+              type="button"
+              className={isActive ? "rail-button rail-button--compact is-active" : "rail-button rail-button--compact"}
+              onClick={() => handlePrimaryToolSelect(entry.id)}
+              data-tooltip={entry.label}
+              data-tooltip-position="right"
+            >
+              <BoardIcon name={iconName} />
+            </button>
+          );
+        })}
       </aside>
 
       {showDrawer && (
@@ -550,12 +603,19 @@ export default function RoomPage() {
           <span className="rail-title">Draw</span>
           <div className="draw-tool-grid">
             {drawTools.map((entry) => (
-              <button key={entry.id} type="button" className={state.tool === entry.id ? "rail-button rail-button--card is-active" : "rail-button rail-button--card"} onClick={() => handleSecondaryToolSelect(entry.id)}>
+              <button
+                key={entry.id}
+                type="button"
+                className={state.tool === entry.id ? "rail-button rail-button--card is-active" : "rail-button rail-button--card"}
+                onClick={() => handleSecondaryToolSelect(entry.id)}
+                data-tooltip={entry.label}
+              >
                 <span className="rail-button__icon"><BoardIcon name={entry.id} /></span>
                 <span className="rail-button__label">{entry.label}</span>
               </button>
             ))}
           </div>
+
           <div className="rail-divider" />
 
           <div className="brush-control">
@@ -582,7 +642,114 @@ export default function RoomPage() {
                    onClick={() => dispatch({type: "SET_COLOR", payload: color})} 
                  />
                ))}
+               <div className="custom-color-wrapper">
+                 <button
+                   type="button"
+                   className="color-dot custom-color-btn"
+                   title="Custom Color"
+                   onClick={(e) => {
+                     e.stopPropagation();
+                     setShowColorPicker(prev => !prev);
+                   }}
+                 >
+                   <BoardIcon name="plus" />
+                 </button>
+                 {showColorPicker && (
+                   <>
+                     <div className="custom-color-overlay" onClick={() => setShowColorPicker(false)} />
+                     <div className="custom-color-popover" onClick={(e) => e.stopPropagation()}>
+                       <HexColorPicker color={state.color} onChange={(c) => dispatch({type: "SET_COLOR", payload: c})} />
+                     </div>
+                   </>
+                 )}
+               </div>
             </div>
+          </div>
+        </aside>
+      )}
+
+      {showShapesDrawer && (
+        <aside className="floating-rail floating-rail--secondary">
+          <span className="rail-title">Shapes</span>
+          <div className="draw-tool-grid">
+            {shapeTools.map((entry) => (
+              <button
+                key={entry.id}
+                type="button"
+                className={state.tool === entry.id ? "rail-button rail-button--card is-active" : "rail-button rail-button--card"}
+                onClick={() => handleSecondaryToolSelect(entry.id)}
+                data-tooltip={entry.label}
+              >
+                <span className="rail-button__icon"><BoardIcon name={entry.id} /></span>
+                <span className="rail-button__label">{entry.label}</span>
+              </button>
+            ))}
+          </div>
+
+          <div className="rail-divider" />
+
+          <div className="brush-control">
+            <span className="brush-control__value">{state.brushSize}px</span>
+            <input 
+              type="range" 
+              min="1" 
+              max="20" 
+              step="1" 
+              value={state.brushSize} 
+              onChange={(e) => dispatch({type: "SET_BRUSH_SIZE", payload: parseInt(e.target.value, 10)})}
+            />
+          </div>
+          
+          <div className="palette-group">
+            <span className="palette-title">Colors</span>
+            <div className="swatch-column">
+               {swatches.map(color => (
+                 <button 
+                   key={color} 
+                   type="button" 
+                   className={state.color === color ? "color-dot is-selected" : "color-dot"} 
+                   style={{backgroundColor: color}} 
+                   onClick={() => dispatch({type: "SET_COLOR", payload: color})} 
+                 />
+               ))}
+               <div className="custom-color-wrapper">
+                 <button
+                   type="button"
+                   className="color-dot custom-color-btn"
+                   title="Custom Color"
+                   onClick={(e) => {
+                     e.stopPropagation();
+                     setShowColorPicker(prev => !prev);
+                   }}
+                 >
+                   <BoardIcon name="plus" />
+                 </button>
+                 {showColorPicker && (
+                   <>
+                     <div className="custom-color-overlay" onClick={() => setShowColorPicker(false)} />
+                     <div className="custom-color-popover" onClick={(e) => e.stopPropagation()}>
+                       <HexColorPicker color={state.color} onChange={(c) => dispatch({type: "SET_COLOR", payload: c})} />
+                     </div>
+                   </>
+                 )}
+               </div>
+            </div>
+          </div>
+        </aside>
+      )}
+      {showEraserDrawer && (
+        <aside className="floating-rail floating-rail--secondary">
+          <span className="rail-title">Eraser</span>
+          <div className="brush-control">
+            <span className="brush-control__value">{Math.max(20, state.brushSize * 5)}px</span>
+            <input 
+              type="range" 
+              min="1" 
+              max="20" 
+              step="1" 
+              value={state.brushSize} 
+              onChange={(e) => dispatch({type: "SET_BRUSH_SIZE", payload: parseInt(e.target.value, 10)})}
+            />
           </div>
         </aside>
       )}
