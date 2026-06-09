@@ -121,6 +121,15 @@ module.exports = function registerSocketHandlers(io) {
         }
 
         const session = await loadRoomSession(roomId);
+        
+        const currentUsers = Array.from(session.users.values());
+        const isReturningUser = payload.user?.id && currentUsers.some(u => u.userId === payload.user.id);
+
+        if (!isReturningUser && session.users.size >= 5) {
+          acknowledge?.({ ok: false, message: "Room is full (max 5 participants)." });
+          return;
+        }
+
         const participant = {
           socketId: socket.id,
           userId: payload.user?.id || crypto.randomUUID(),

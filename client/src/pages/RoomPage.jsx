@@ -166,7 +166,7 @@ export default function RoomPage() {
     if (!socket || !roomId || !isConnected || !wasmEngine) return;
 
     socket.emit("join-room", { roomId, user }, (res) => {
-      setStatusMessage(res?.ok ? "Live collaboration active" : "Join failed");
+      setStatusMessage(res?.ok ? "Live collaboration active" : (res?.message || "Join failed"));
     });
 
     const handleRoomState = (payload) => {
