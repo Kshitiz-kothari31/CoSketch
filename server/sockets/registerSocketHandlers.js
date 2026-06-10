@@ -15,7 +15,13 @@ function sanitizeRoomId(roomId) {
 }
 
 function buildParticipants(session) {
-  return Array.from(session.users.values()).map(({ socketId, ...participant }) => participant);
+  const uniqueUsers = new Map();
+  for (const { socketId, ...participant } of session.users.values()) {
+    if (!uniqueUsers.has(participant.userId)) {
+      uniqueUsers.set(participant.userId, participant);
+    }
+  }
+  return Array.from(uniqueUsers.values());
 }
 
 function buildCursors(session) {
@@ -23,9 +29,10 @@ function buildCursors(session) {
 }
 
 function emitRoomUsers(io, roomId, session) {
+  const participants = buildParticipants(session);
   io.to(roomId).emit("room-users", {
-    count: session.users.size,
-    participants: buildParticipants(session),
+    count: participants.length,
+    participants: participants,
     hostUserId: session.hostUserId,
     bannedUsers: Array.from(session.bannedUsers || []),
   });
@@ -125,7 +132,9 @@ module.exports = function registerSocketHandlers(io) {
         const currentUsers = Array.from(session.users.values());
         const isReturningUser = payload.user?.id && currentUsers.some(u => u.userId === payload.user.id);
 
-        if (!isReturningUser && session.users.size >= 5) {
+        const uniqueUsersCount = new Set(currentUsers.map(u => u.userId)).size;
+
+        if (!isReturningUser && uniqueUsersCount >= 5) {
           acknowledge?.({ ok: false, message: "Room is full (max 5 participants)." });
           return;
         }
@@ -133,7 +142,7 @@ module.exports = function registerSocketHandlers(io) {
         const participant = {
           socketId: socket.id,
           userId: payload.user?.id || crypto.randomUUID(),
-          name: String(payload.user?.name || `Guest ${session.users.size + 1}`).slice(0, 32),
+          name: String(payload.user?.name || `Guest ${uniqueUsersCount + 1}`).slice(0, 32),
         };
 
         if (!session.hostUserId) {

@@ -51,6 +51,24 @@ function buildShape(tool, color, brushSize, userId, point) {
   };
 }
 
+function getIntersectingErasers(targetItem, quadtree) {
+  if (!quadtree || !targetItem) return [];
+  const targetBounds = getItemBounds(targetItem);
+  const candidatesSet = quadtree.queryRange(targetBounds);
+  const candidates = Array.from(candidatesSet);
+  
+  return candidates.filter(item => {
+    if (item.tool !== "eraser") return false;
+    const eraserBounds = getItemBounds(item);
+    return !(
+      targetBounds.x > eraserBounds.x + eraserBounds.width ||
+      targetBounds.x + targetBounds.width < eraserBounds.x ||
+      targetBounds.y > eraserBounds.y + eraserBounds.height ||
+      targetBounds.y + targetBounds.height < eraserBounds.y
+    );
+  });
+}
+
 function getTopItemAtPoint(quadtree, point) {
   if (!quadtree) return null;
   const candidatesSet = quadtree.queryPoint(point);
@@ -59,8 +77,18 @@ function getTopItemAtPoint(quadtree, point) {
   // Sort descending by Z-index (highest first)
   candidates.sort((a, b) => b._zIndex - a._zIndex);
 
+  let isErased = false;
   for (const item of candidates) {
-    if (hitTestItem(point, item)) {
+    if (item.tool === "eraser" && hitTestItem(point, item)) {
+      isErased = true;
+      break;
+    }
+  }
+
+  if (isErased) return null;
+
+  for (const item of candidates) {
+    if (item.tool !== "eraser" && hitTestItem(point, item)) {
       return item;
     }
   }
@@ -214,11 +242,15 @@ export default function CanvasBoard({
       }
 
       if (previewMoveRef.current) {
-        drawBoardItem(context, previewMoveRef.current);
+        if (Array.isArray(previewMoveRef.current)) {
+          previewMoveRef.current.forEach((item) => drawBoardItem(context, item));
+        } else {
+          drawBoardItem(context, previewMoveRef.current);
+        }
       }
 
       const selectedItem =
-        previewMoveRef.current ||
+        (Array.isArray(previewMoveRef.current) ? previewMoveRef.current[0] : previewMoveRef.current) ||
         (interactionRef.current?.type === "move"
           ? items.find((item) => item.id === selectedItemId)
           : null) ||
@@ -534,9 +566,11 @@ export default function CanvasBoard({
       dispatch({ type: "SET_SELECTED_ITEM", payload: target?.id || null });
 
       if (target) {
+        const erasers = getIntersectingErasers(target, quadtree);
         interactionRef.current = {
           type: "move",
           originItem: target,
+          originErasers: erasers,
           startWorldPoint: worldPoint,
         };
         event.currentTarget.setPointerCapture(event.pointerId);
@@ -613,7 +647,11 @@ export default function CanvasBoard({
     if (interactionRef.current.type === "move" && interactionRef.current.originItem) {
       const dx = worldPoint.x - interactionRef.current.startWorldPoint.x;
       const dy = worldPoint.y - interactionRef.current.startWorldPoint.y;
-      previewMoveRef.current = translateItem(interactionRef.current.originItem, dx, dy);
+      
+      const movedItem = translateItem(interactionRef.current.originItem, dx, dy);
+      const movedErasers = (interactionRef.current.originErasers || []).map(e => translateItem(e, dx, dy));
+      
+      previewMoveRef.current = [movedItem, ...movedErasers];
       scheduleRender();
       return;
     }
@@ -721,15 +759,23 @@ export default function CanvasBoard({
     }
 
     if (interaction.type === "move" && previewMoveRef.current) {
-      const nextItem = previewMoveRef.current;
+      const movedItems = Array.isArray(previewMoveRef.current) ? previewMoveRef.current : [previewMoveRef.current];
       previewMoveRef.current = null;
 
+      const nextItem = movedItems[0];
       if (interaction.originItem.id !== nextItem.id) {
         scheduleRender();
         return;
       }
 
       commitUpdate(interaction.originItem, nextItem);
+      
+      if (interaction.originErasers) {
+        for (let i = 0; i < interaction.originErasers.length; i++) {
+          commitUpdate(interaction.originErasers[i], movedItems[i + 1]);
+        }
+      }
+
       dispatch({ type: "SET_SELECTED_ITEM", payload: nextItem.id });
       scheduleRender();
       return;
