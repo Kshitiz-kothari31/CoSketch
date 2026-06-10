@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   LiveKitRoom,
   RoomAudioRenderer,
@@ -15,6 +15,111 @@ export default function VideoCall({ roomId, userName, socket, onClose }) {
   const [serverUrl, setServerUrl] = useState(null);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const dragRef = useRef(null);
+
+  const [size, setSize] = useState({ width: 360, height: 480 });
+  const [isResizing, setIsResizing] = useState(false);
+  const resizeRef = useRef(null);
+
+  useEffect(() => {
+    const isMobile = window.innerWidth <= 768;
+    const initialWidth = isMobile ? Math.min(320, window.innerWidth * 0.9) : 360;
+    const initialHeight = isMobile ? Math.min(440, window.innerHeight * 0.75) : 480;
+    
+    setSize({ width: initialWidth, height: initialHeight });
+    setPosition({
+      x: isMobile ? (window.innerWidth - initialWidth) / 2 : Math.max(0, window.innerWidth - initialWidth - 24),
+      y: isMobile ? (window.innerHeight - initialHeight) / 2 : Math.max(0, window.innerHeight - initialHeight - 24)
+    });
+  }, []);
+
+  const handleResizeDown = (e) => {
+    e.stopPropagation();
+    setIsResizing(true);
+    resizeRef.current = {
+      startX: e.clientX,
+      startY: e.clientY,
+      initialWidth: size.width,
+      initialHeight: size.height
+    };
+    e.target.setPointerCapture(e.pointerId);
+  };
+
+  const handleResizeMove = (e) => {
+    if (!isResizing || !resizeRef.current) return;
+    const dx = e.clientX - resizeRef.current.startX;
+    const dy = e.clientY - resizeRef.current.startY;
+    
+    // Clamp to min size and screen bounds
+    const newWidth = Math.max(280, Math.min(resizeRef.current.initialWidth + dx, window.innerWidth - position.x));
+    const newHeight = Math.max(360, Math.min(resizeRef.current.initialHeight + dy, window.innerHeight - position.y));
+
+    setSize({
+      width: newWidth,
+      height: newHeight
+    });
+  };
+
+  const handleResizeUp = (e) => {
+    setIsResizing(false);
+    if (e.target.hasPointerCapture(e.pointerId)) {
+      e.target.releasePointerCapture(e.pointerId);
+    }
+  };
+
+  const handlePointerDown = (e) => {
+    if (e.target.closest('.btn-close-call')) return;
+    setIsDragging(true);
+    dragRef.current = {
+      startX: e.clientX,
+      startY: e.clientY,
+      initialX: position.x,
+      initialY: position.y
+    };
+    e.target.setPointerCapture(e.pointerId);
+  };
+
+  const handlePointerMove = (e) => {
+    if (!isDragging || !dragRef.current) return;
+    const dx = e.clientX - dragRef.current.startX;
+    const dy = e.clientY - dragRef.current.startY;
+    
+    let newX = dragRef.current.initialX + dx;
+    let newY = dragRef.current.initialY + dy;
+
+    // Clamp to window bounds using current size
+    newX = Math.max(0, Math.min(newX, window.innerWidth - size.width));
+    newY = Math.max(0, Math.min(newY, window.innerHeight - size.height));
+
+    setPosition({
+      x: newX,
+      y: newY
+    });
+  };
+
+  const handlePointerUp = (e) => {
+    setIsDragging(false);
+    if (e.target.hasPointerCapture(e.pointerId)) {
+      e.target.releasePointerCapture(e.pointerId);
+    }
+  };
+
+  const floatingStyle = {
+    left: position.x,
+    top: position.y,
+    width: size.width,
+    height: size.height,
+    maxWidth: '100vw',
+    maxHeight: '100vh',
+    bottom: 'auto',
+    right: 'auto',
+    margin: 0,
+    transform: 'none',
+    transition: (isDragging || isResizing) ? 'none' : undefined
+  };
 
   useEffect(() => {
     let active = true;
@@ -58,8 +163,15 @@ export default function VideoCall({ roomId, userName, socket, onClose }) {
 
   if (loading) {
     return (
-      <div className="floating-video-container loading-state">
-        <div className="video-call-header">
+      <div className="floating-video-container loading-state" style={floatingStyle}>
+        <div 
+          className="video-call-header"
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
+          onPointerCancel={handlePointerUp}
+          style={{ cursor: isDragging ? 'grabbing' : 'grab', userSelect: 'none' }}
+        >
           <span>Connecting to call...</span>
           <button className="btn-close-call" onClick={onClose}>✖</button>
         </div>
@@ -73,8 +185,15 @@ export default function VideoCall({ roomId, userName, socket, onClose }) {
 
   if (error) {
     return (
-      <div className="floating-video-container error-state">
-        <div className="video-call-header">
+      <div className="floating-video-container error-state" style={floatingStyle}>
+        <div 
+          className="video-call-header"
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
+          onPointerCancel={handlePointerUp}
+          style={{ cursor: isDragging ? 'grabbing' : 'grab', userSelect: 'none' }}
+        >
           <span>Video Call Integration</span>
           <button className="btn-close-call" onClick={onClose}>✖</button>
         </div>
@@ -88,8 +207,15 @@ export default function VideoCall({ roomId, userName, socket, onClose }) {
   }
 
   return (
-    <div className="floating-video-container">
-      <div className="video-call-header">
+    <div className="floating-video-container" style={floatingStyle}>
+      <div 
+        className="video-call-header"
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerUp}
+        style={{ cursor: isDragging ? 'grabbing' : 'grab', userSelect: 'none' }}
+      >
         <span>Active Call: {roomId} ({userName})</span>
         <button className="btn-close-call" onClick={onClose} title="Leave Call">
           ✖
@@ -110,6 +236,32 @@ export default function VideoCall({ roomId, userName, socket, onClose }) {
         <CustomControlBar onLeave={onClose} socket={socket} />
         <RoomAudioRenderer />
       </LiveKitRoom>
+
+      <div 
+        className="resize-handle"
+        onPointerDown={handleResizeDown}
+        onPointerMove={handleResizeMove}
+        onPointerUp={handleResizeUp}
+        onPointerCancel={handleResizeUp}
+        style={{
+          position: 'absolute',
+          bottom: 0,
+          right: 0,
+          width: '24px',
+          height: '24px',
+          cursor: 'nwse-resize',
+          zIndex: 100,
+          display: 'flex',
+          alignItems: 'flex-end',
+          justifyContent: 'flex-end',
+          padding: '4px'
+        }}
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2" style={{ width: '12px', height: '12px', opacity: 0.8 }}>
+          <line x1="14" y1="21" x2="21" y2="14" />
+          <line x1="8" y1="21" x2="21" y2="8" />
+        </svg>
+      </div>
     </div>
   );
 }

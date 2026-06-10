@@ -438,10 +438,12 @@ export default function RoomPage() {
             <BoardIcon name="target" />
             <span className="badge-text">{formatLastSaved(state.savedAt)}</span>
           </span>
-          <button type="button" className={`cta-button ${shareMessage ? "is-copied" : ""}`} onClick={handleShare}>
-            <BoardIcon name="link" />
-            <span className="btn-text">{shareMessage || "Share Room ID"}</span>
-          </button>
+          {state.hostUserId === state.user?.id && (
+            <button type="button" className={`cta-button ${shareMessage ? "is-copied" : ""}`} onClick={handleShare}>
+              <BoardIcon name="link" />
+              <span className="btn-text">{shareMessage || "Share Room ID"}</span>
+            </button>
+          )}
         </section>
       </div>
 
