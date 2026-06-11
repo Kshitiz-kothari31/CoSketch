@@ -45,7 +45,7 @@ const swatches = ["#202431", "#4B67FF", "#FF6B57", "#2BBE60", "#F4B942", "#CB69F
 function getFallbackUser() {
   const sessionId = sessionStorage.getItem("cosketch-session-id") || crypto.randomUUID();
   sessionStorage.setItem("cosketch-session-id", sessionId);
-  
+
   return {
     id: sessionId,
     name: window.localStorage.getItem("cosketch-name") || "Guest",
@@ -139,7 +139,7 @@ export default function RoomPage() {
         const vectorPos = new Module.VectorInt();
         const position = item.fractionalPosition || [50];
         position.forEach(val => vectorPos.push_back(val));
-        
+
         instance.addElement(item.id, vectorPos, item.userId, JSON.stringify(item));
         vectorPos.delete();
       } else if (action.type === "delete-item") {
@@ -331,10 +331,10 @@ export default function RoomPage() {
         padding: 0,
         margin: 0
       }}>
-        <div style={{ 
-          display: 'flex', 
-          flexDirection: 'column', 
-          alignItems: 'center', 
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
           justifyContent: 'center'
         }}>
           <div style={{
@@ -448,18 +448,18 @@ export default function RoomPage() {
       </div>
 
       <section className="floating-dock floating-dock--left">
-        <button 
-          type="button" 
-          className="dock-button" 
+        <button
+          type="button"
+          className="dock-button"
           onClick={() => socket?.emit("undo")}
           disabled={state.historyCount === 0}
           data-tooltip="Undo"
         >
           <BoardIcon name="undo" />
         </button>
-        <button 
-          type="button" 
-          className="dock-button" 
+        <button
+          type="button"
+          className="dock-button"
           onClick={() => socket?.emit("redo")}
           disabled={state.redoCount === 0}
           data-tooltip="Redo"
@@ -469,26 +469,26 @@ export default function RoomPage() {
       </section>
 
       <section className="floating-dock floating-dock--right">
-        <button 
-          type="button" 
-          className="dock-button" 
+        <button
+          type="button"
+          className="dock-button"
           onClick={() => zoom(0.8)}
           data-tooltip="Zoom Out"
         >
           <BoardIcon name="minus" />
         </button>
         <span className="zoom-readout">{Math.round(state.viewport.scale * 100)}%</span>
-        <button 
-          type="button" 
-          className="dock-button" 
+        <button
+          type="button"
+          className="dock-button"
           onClick={() => zoom(1.2)}
           data-tooltip="Zoom In"
         >
           <BoardIcon name="plus" />
         </button>
-        <button 
-          type="button" 
-          className="dock-button" 
+        <button
+          type="button"
+          className="dock-button"
           onClick={() => setShowHelp(true)}
           data-tooltip="Board Guide"
         >
@@ -554,7 +554,7 @@ export default function RoomPage() {
                     </span>
                   </div>
                   {isHost && !isMe && (
-                    <button 
+                    <button
                       className={`block-btn ${isBanned ? 'is-banned' : ''}`}
                       onClick={() => {
                         if (isBanned) socket?.emit("unban-user", p.userId);
@@ -622,49 +622,49 @@ export default function RoomPage() {
 
           <div className="brush-control">
             <span className="brush-control__value">{state.brushSize}px</span>
-            <input 
-              type="range" 
-              min="1" 
-              max="20" 
-              step="1" 
-              value={state.brushSize} 
-              onChange={(e) => dispatch({type: "SET_BRUSH_SIZE", payload: parseInt(e.target.value, 10)})}
+            <input
+              type="range"
+              min="1"
+              max="20"
+              step="1"
+              value={state.brushSize}
+              onChange={(e) => dispatch({ type: "SET_BRUSH_SIZE", payload: parseInt(e.target.value, 10) })}
             />
           </div>
-          
+
           <div className="palette-group">
             <span className="palette-title">Colors</span>
             <div className="swatch-column">
-               {swatches.map(color => (
-                 <button 
-                   key={color} 
-                   type="button" 
-                   className={state.color === color ? "color-dot is-selected" : "color-dot"} 
-                   style={{backgroundColor: color}} 
-                   onClick={() => dispatch({type: "SET_COLOR", payload: color})} 
-                 />
-               ))}
-               <div className="custom-color-wrapper">
-                 <button
-                   type="button"
-                   className="color-dot custom-color-btn"
-                   title="Custom Color"
-                   onClick={(e) => {
-                     e.stopPropagation();
-                     setShowColorPicker(prev => !prev);
-                   }}
-                 >
-                   <BoardIcon name="plus" />
-                 </button>
-                 {showColorPicker && (
-                   <>
-                     <div className="custom-color-overlay" onClick={() => setShowColorPicker(false)} />
-                     <div className="custom-color-popover" onClick={(e) => e.stopPropagation()}>
-                       <HexColorPicker color={state.color} onChange={(c) => dispatch({type: "SET_COLOR", payload: c})} />
-                     </div>
-                   </>
-                 )}
-               </div>
+              {swatches.map(color => (
+                <button
+                  key={color}
+                  type="button"
+                  className={state.color === color ? "color-dot is-selected" : "color-dot"}
+                  style={{ backgroundColor: color }}
+                  onClick={() => dispatch({ type: "SET_COLOR", payload: color })}
+                />
+              ))}
+              <div className="custom-color-wrapper">
+                <button
+                  type="button"
+                  className="color-dot custom-color-btn"
+                  title="Custom Color"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowColorPicker(prev => !prev);
+                  }}
+                >
+                  <BoardIcon name="plus" />
+                </button>
+                {showColorPicker && (
+                  <>
+                    <div className="custom-color-overlay" onClick={() => setShowColorPicker(false)} />
+                    <div className="custom-color-popover" onClick={(e) => e.stopPropagation()}>
+                      <HexColorPicker color={state.color} onChange={(c) => dispatch({ type: "SET_COLOR", payload: c })} />
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
           </div>
         </aside>
@@ -692,49 +692,49 @@ export default function RoomPage() {
 
           <div className="brush-control">
             <span className="brush-control__value">{state.brushSize}px</span>
-            <input 
-              type="range" 
-              min="1" 
-              max="20" 
-              step="1" 
-              value={state.brushSize} 
-              onChange={(e) => dispatch({type: "SET_BRUSH_SIZE", payload: parseInt(e.target.value, 10)})}
+            <input
+              type="range"
+              min="1"
+              max="20"
+              step="1"
+              value={state.brushSize}
+              onChange={(e) => dispatch({ type: "SET_BRUSH_SIZE", payload: parseInt(e.target.value, 10) })}
             />
           </div>
-          
+
           <div className="palette-group">
             <span className="palette-title">Colors</span>
             <div className="swatch-column">
-               {swatches.map(color => (
-                 <button 
-                   key={color} 
-                   type="button" 
-                   className={state.color === color ? "color-dot is-selected" : "color-dot"} 
-                   style={{backgroundColor: color}} 
-                   onClick={() => dispatch({type: "SET_COLOR", payload: color})} 
-                 />
-               ))}
-               <div className="custom-color-wrapper">
-                 <button
-                   type="button"
-                   className="color-dot custom-color-btn"
-                   title="Custom Color"
-                   onClick={(e) => {
-                     e.stopPropagation();
-                     setShowColorPicker(prev => !prev);
-                   }}
-                 >
-                   <BoardIcon name="plus" />
-                 </button>
-                 {showColorPicker && (
-                   <>
-                     <div className="custom-color-overlay" onClick={() => setShowColorPicker(false)} />
-                     <div className="custom-color-popover" onClick={(e) => e.stopPropagation()}>
-                       <HexColorPicker color={state.color} onChange={(c) => dispatch({type: "SET_COLOR", payload: c})} />
-                     </div>
-                   </>
-                 )}
-               </div>
+              {swatches.map(color => (
+                <button
+                  key={color}
+                  type="button"
+                  className={state.color === color ? "color-dot is-selected" : "color-dot"}
+                  style={{ backgroundColor: color }}
+                  onClick={() => dispatch({ type: "SET_COLOR", payload: color })}
+                />
+              ))}
+              <div className="custom-color-wrapper">
+                <button
+                  type="button"
+                  className="color-dot custom-color-btn"
+                  title="Custom Color"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowColorPicker(prev => !prev);
+                  }}
+                >
+                  <BoardIcon name="plus" />
+                </button>
+                {showColorPicker && (
+                  <>
+                    <div className="custom-color-overlay" onClick={() => setShowColorPicker(false)} />
+                    <div className="custom-color-popover" onClick={(e) => e.stopPropagation()}>
+                      <HexColorPicker color={state.color} onChange={(c) => dispatch({ type: "SET_COLOR", payload: c })} />
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
           </div>
         </aside>
@@ -744,13 +744,13 @@ export default function RoomPage() {
           <span className="rail-title">Eraser</span>
           <div className="brush-control">
             <span className="brush-control__value">{Math.max(20, state.brushSize * 5)}px</span>
-            <input 
-              type="range" 
-              min="1" 
-              max="20" 
-              step="1" 
-              value={state.brushSize} 
-              onChange={(e) => dispatch({type: "SET_BRUSH_SIZE", payload: parseInt(e.target.value, 10)})}
+            <input
+              type="range"
+              min="1"
+              max="20"
+              step="1"
+              value={state.brushSize}
+              onChange={(e) => dispatch({ type: "SET_BRUSH_SIZE", payload: parseInt(e.target.value, 10) })}
             />
           </div>
         </aside>
@@ -774,10 +774,10 @@ export default function RoomPage() {
                 <h3 className="eyebrow">Board Guide</h3>
                 <h2>Tools now available</h2>
               </div>
-              <button 
-                type="button" 
-                className="icon-action" 
-                onClick={() => setShowHelp(false)} 
+              <button
+                type="button"
+                className="icon-action"
+                onClick={() => setShowHelp(false)}
                 style={{ borderRadius: "50%", width: "40px", height: "40px", background: "rgba(75, 103, 255, 0.1)", color: "var(--blue)" }}
               >
                 <BoardIcon name="minus" />
