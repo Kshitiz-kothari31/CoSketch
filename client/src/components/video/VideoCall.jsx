@@ -170,7 +170,7 @@ export default function VideoCall({ roomId, userName, socket, onClose }) {
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
           onPointerCancel={handlePointerUp}
-          style={{ cursor: isDragging ? 'grabbing' : 'grab', userSelect: 'none' }}
+          style={{ cursor: isDragging ? 'grabbing' : 'grab', userSelect: 'none', touchAction: 'none' }}
         >
           <span>Connecting to call...</span>
           <button className="btn-close-call" onClick={onClose}>✖</button>
@@ -192,7 +192,7 @@ export default function VideoCall({ roomId, userName, socket, onClose }) {
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
           onPointerCancel={handlePointerUp}
-          style={{ cursor: isDragging ? 'grabbing' : 'grab', userSelect: 'none' }}
+          style={{ cursor: isDragging ? 'grabbing' : 'grab', userSelect: 'none', touchAction: 'none' }}
         >
           <span>Video Call Integration</span>
           <button className="btn-close-call" onClick={onClose}>✖</button>
@@ -214,7 +214,7 @@ export default function VideoCall({ roomId, userName, socket, onClose }) {
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
         onPointerCancel={handlePointerUp}
-        style={{ cursor: isDragging ? 'grabbing' : 'grab', userSelect: 'none' }}
+        style={{ cursor: isDragging ? 'grabbing' : 'grab', userSelect: 'none', touchAction: 'none' }}
       >
         <span>Active Call: {roomId} ({userName})</span>
         <button className="btn-close-call" onClick={onClose} title="Leave Call">
@@ -254,7 +254,8 @@ export default function VideoCall({ roomId, userName, socket, onClose }) {
           display: 'flex',
           alignItems: 'flex-end',
           justifyContent: 'flex-end',
-          padding: '4px'
+          padding: '4px',
+          touchAction: 'none'
         }}
       >
         <svg viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2" style={{ width: '12px', height: '12px', opacity: 0.8 }}>
